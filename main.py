@@ -273,19 +273,19 @@ if __name__ == "__main__":
     # get number of pages for naive iteration
     numPages = getNumberOfPages(soup)
 
-    # get all job URLs from website
-    allJobUrls = getAllJobUrls(numPages, soup)
-    # caching purposes (only about 0.1% change per hour)
-    f = open("allJobUrlsCache.txt", "w")
-    f.write(str(allJobUrls))
-    f.close()
+    # # get all job URLs from website
+    # allJobUrls = getAllJobUrls(numPages, soup)
+    # # caching purposes (only about 0.1% change per hour)
+    # f = open("allJobUrlsCache.txt", "w")
+    # f.write(str(allJobUrls))
+    # f.close()
 
     # get all job URLs from cached file
-    # f = open("allJobUrlsCache.txt", "r")
-    # allUrlsStr = f.read()
-    # allJobUrls = list(eval(allUrlsStr))
-    # print(f"Using the cached {len(allJobUrls)} urls")
-    # f.close()
+    f = open("allJobUrlsCache.txt", "r")
+    allUrlsStr = f.read()
+    allJobUrls = list(eval(allUrlsStr))
+    print(f"Using the cached {len(allJobUrls)} urls")
+    f.close()
 
     # Testing Data
     # testTitlesUrls = ['/en-us/details/200525855/system-integration-lead?team=SFTWR','/en-us/details/200525606/software-engineering-program-manager-media-frameworks-apple-vision-pro?team=SFTWR','/en-us/details/200539431/senior-international-program-manager-services?team=SFTWR', '/en-us/details/200489593/natural-language-generative-modeling-research-engineer-siml-ise?team=MLAI', '/en-us/details/200519780/ai-safety-robustness-analysis-manager-system-intelligent-and-machine-learning-ise?team=SFTWR']
