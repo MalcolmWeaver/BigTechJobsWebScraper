@@ -2,14 +2,17 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import re
-from utils import BaseJobsSiteScraper
+from utils import NewJobsSiteScraper, BaseJobsSiteScraper
 
 class Apple(BaseJobsSiteScraper):
+    
     def __init__(self):
         print("Apple Jobs Scraper")
         print("Base Query URL:", self.jobsQueryURL)
 
-    jobTitlesCacheFilename = "allJobUrlsCache.txt"
+    
+
+    jobTitlesCacheFilename = "allJobUrlsCacheTest.txt"
 
     # Apple Jobs URL
     jobsURLPrefix = "https://jobs.apple.com"
@@ -18,13 +21,18 @@ class Apple(BaseJobsSiteScraper):
     locationFilter = "location=washington-state1000"
     # locationFilter = "location=austin-metro-area-AUSMETRO+austin-AST"
 
+    sortSeg = "&sort_by=new"
+
     # Apple Jobs URL with provided filters
-    jobsQueryURL = f"{jobsURLPrefix}/en-us/search?{locationFilter}&sort=newest&&team=devops-and-site-reliability-SFTWR-DSR%20engineering-project-management-SFTWR-EPM%20information-systems-and-technology-SFTWR-ISTECH%20machine-learning-and-ai-SFTWR-MCHLN%20security-and-privacy-SFTWR-SEC%20software-quality-automation-and-tools-SFTWR-SQAT%20wireless-software-SFTWR-WSFT%20analog-and-digital-design-HRDWR-ADD%20engineering-project-management-HRDWR-EPM%20machine-learning-and-ai-HRDWR-MCHLN%20system-design-and-test-engineering-HRDWR-SDE%20wireless-hardware-HRDWR-WT%20machine-learning-infrastructure-MLAI-MLI%20deep-learning-and-reinforcement-learning-MLAI-DLRL%20natural-language-processing-and-speech-technologies-MLAI-NLP%20computer-vision-MLAI-CV%20cloud-and-infrastructure-SFTWR-CLD%20apps-and-frameworks-SFTWR-AF%20core-operating-systems-SFTWR-COS&"
+    jobsQueryURL = f"{jobsURLPrefix}/en-us/search?{locationFilter}{sortSeg}&&team=devops-and-site-reliability-SFTWR-DSR%20engineering-project-management-SFTWR-EPM%20information-systems-and-technology-SFTWR-ISTECH%20machine-learning-and-ai-SFTWR-MCHLN%20security-and-privacy-SFTWR-SEC%20software-quality-automation-and-tools-SFTWR-SQAT%20wireless-software-SFTWR-WSFT%20analog-and-digital-design-HRDWR-ADD%20engineering-project-management-HRDWR-EPM%20machine-learning-and-ai-HRDWR-MCHLN%20system-design-and-test-engineering-HRDWR-SDE%20wireless-hardware-HRDWR-WT%20machine-learning-infrastructure-MLAI-MLI%20deep-learning-and-reinforcement-learning-MLAI-DLRL%20natural-language-processing-and-speech-technologies-MLAI-NLP%20computer-vision-MLAI-CV%20cloud-and-infrastructure-SFTWR-CLD%20apps-and-frameworks-SFTWR-AF%20core-operating-systems-SFTWR-COS&"
 
     # Suffix appended to jobsQueryURL to specify pagination
     jobsQueryURLPageSuffix = "&page="
 
-    outputFilename = "EntryLevelPositionsAppleFeb25.txt"
+    outputFilename = "no-output-filename"
+    def getOutputFilename(self):
+        outputFilename = f"{self.__class__.__name__}EntryLevelPositions-{self.jobsQueryURL}.txt"
+    
 
     def getJobUrl(self, job):
         return f"{self.jobsURLPrefix}{job}"
@@ -163,57 +171,6 @@ class Apple(BaseJobsSiteScraper):
 
         return allReqs
 
-        
-    def getAppleEntryLevelPositions(self):
-
-        # TODO: since parameter (only new jobs)
-
-        """
-        Get the soup for the (first) page of query results.
-        Get the number of pages for pagination.
-        Optionally get all the job URLs from all pages and cache to a file, 
-        or read from cached file.
-        """
-
-        try:
-            page = requests.get(self.jobsQueryURL)
-            if "The page you’re looking for can’t be" in page.text:
-                print(f"Job URL {self.jobsQueryURL} could not be found")
-                exit()
-        except:
-            print(f"Could not get page for {self.jobsQueryURL}")
-            exit()
-        soup = BeautifulSoup(page.content, "html.parser")
-
-        # get all job URLs from website
-
-        # # get number of pages for naive iteration
-        # numPages = getNumberOfPages(soup)
-
-        # allJobUrls = self.getAllJobUrls(numPages, soup)
-        # # caching purposes (only about 0.1% change per hour)
-        # f = open(self.jobTitlesCacheFilename, "w")
-        # f.write(str(allJobUrls))
-        # f.close()
-
-        # get all job URLs from cached file
-        f = open(self.jobTitlesCacheFilename, "r")
-        allUrlsStr = f.read()
-        allJobUrls = list(eval(allUrlsStr))
-        print(f"Using the cached {len(allJobUrls)} urls")
-        f.close()
-
-        # Testing Data
-        # testTitlesUrls = ['/en-us/details/200525855/system-integration-lead?team=SFTWR','/en-us/details/200525606/software-engineering-program-manager-media-frameworks-apple-vision-pro?team=SFTWR','/en-us/details/200539431/senior-international-program-manager-services?team=SFTWR', '/en-us/details/200489593/natural-language-generative-modeling-research-engineer-siml-ise?team=MLAI', '/en-us/details/200519780/ai-safety-robustness-analysis-manager-system-intelligent-and-machine-learning-ise?team=SFTWR']
-        # testQulificationsUrls = ["/en-us/details/200534209/database-engineer-employee-experience-productivity?team=SFTWR","/en-us/details/200539573/software-engineer-backup-migration?team=SFTWR", "/en-us/details/200538805/engineering-project-specialist-softgoods?team=HRDWR", "/en-us/details/200504957/wifi-embedded-software-engineer?team=SFTWR"]
-        # getEntryLevelPositions(testTitlesUrls + testQulificationsUrls)
-
-        print(f"Beginning to scan for entry level positions. This may take a while. Check {self.outputFilename} for results...")
-        self.getEntryLevelPositions(allJobUrls, self.outputFilename)
-
-    # TODO: REGEX Improvements
-        # Filter out years in all categories
-        # filter out years "plus" and "or more" numbers written out
 
 def getNumberOfPages(soup):
     """
@@ -249,4 +206,10 @@ def getJobUrlsFromJobsQueriedPage(soup):
 
 if __name__ == "__main__":
     apple = Apple()
-    apple.getAppleEntryLevelPositions()
+    useCache = True
+    apple.getEntryLevelPositions(useCache)
+
+ # Testing Data
+# testTitlesUrls = ['/en-us/details/200525855/system-integration-lead?team=SFTWR','/en-us/details/200525606/software-engineering-program-manager-media-frameworks-apple-vision-pro?team=SFTWR','/en-us/details/200539431/senior-international-program-manager-services?team=SFTWR', '/en-us/details/200489593/natural-language-generative-modeling-research-engineer-siml-ise?team=MLAI', '/en-us/details/200519780/ai-safety-robustness-analysis-manager-system-intelligent-and-machine-learning-ise?team=SFTWR']
+# testQulificationsUrls = ["/en-us/details/200534209/database-engineer-employee-experience-productivity?team=SFTWR","/en-us/details/200539573/software-engineer-backup-migration?team=SFTWR", "/en-us/details/200538805/engineering-project-specialist-softgoods?team=HRDWR", "/en-us/details/200504957/wifi-embedded-software-engineer?team=SFTWR"]
+# getEntryLevelPositions(testTitlesUrls + testQulificationsUrls)

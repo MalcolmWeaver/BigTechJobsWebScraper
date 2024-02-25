@@ -50,7 +50,128 @@ class BaseJobsSiteScraper:
                 return False
         return True
     
-    def getEntryLevelPositions(self, allJobUrls : list[str], outputFilename="EntryLevelPositions.txt") -> int:
+    def getEntryLevelPositionsFromList(self, allJobUrls : list[str], outputFilename="EntryLevelPositions.txt") -> int:
+        # TODO: since date parameter
+        """
+        Retrieves entry level job positions from a list of job URLs and writes them to a file.
+        Also prints progress to the console.
+
+        Returns:
+        int the number of entry level positions found
+        """
+        t0 = time.time()
+        f = open(outputFilename, "w")
+
+        numEntryLevelPositions = 0
+        for idx, job in enumerate(allJobUrls):
+
+            # Print progress every 20 jobs (there are  max 20 jobs per page)
+            if (idx + 1 ) % 20 == 0:
+                print(f"Processed {idx+1} jobs. Time elapsed: {time.time() - t0}.")
+                print(f"Percent entry level: {numEntryLevelPositions / (idx+1) * 100}%. Percent complete: {(idx+1) / len(allJobUrls) * 100}%. Expected time remaining: {(len(allJobUrls) - (idx+1)) / (idx + 1) * (time.time() - t0)/60} minutes")
+                f.flush()
+
+            isEntryLevel = True
+
+            # get the job description page
+            jobUrl = self.getJobUrl(job)
+            print("Job URL:", jobUrl)
+            try:
+                page = requests.get(jobUrl)
+                if "The page you’re looking for can’t be" in page.text or "404 Not Found" in page.text:
+                    print(f"Job URL {jobUrl} could not be found")
+                    isEntryLevel = False
+            except:
+                print(f"Could not get page for {jobUrl}")
+                continue
+            soup = BeautifulSoup(page.content, "html.parser")
+
+            # get the job title and check if it could be an entry level position
+            title = ""
+            try:
+                title = self.getJobTitle(soup)    
+            except:
+                print(f"Could not get TITLE for {jobUrl}")
+
+            if not self.jobTitleIsEntryLevel(title):
+                print(f"Job title {title} is not for an entry level position")
+                isEntryLevel = False
+
+            # get the qualifications and check if they could be for an entry level position
+            qualifications = []
+            try:
+                qualifications = self.getQualifications(soup)
+                
+            except:
+                print(f"Could not get QUALIFICATIONS for {jobUrl}")
+            if not self.qualificationsAreEntryLevel(qualifications):
+                print(f"Qualifications are not for an entry level position")
+                isEntryLevel = False
+            # write to file
+            if isEntryLevel:
+                print(f"Entry level position found: {jobUrl}")
+                f.write(f"{jobUrl}\n")
+                numEntryLevelPositions += 1
+
+        t1 = time.time()
+        print(f"Time to get entry level positions: {t1-t0}")
+        f.close()
+        return numEntryLevelPositions
+
+    def getEntryLevelPositions(self, isCached):
+        """
+        Retrieve all job URLs from the specified number of pages (all of them).
+        """
+
+        """
+        Get the soup for the (first) page of query results.
+        Get the number of pages for pagination.
+        Optionally get all the job URLs from all pages and cache to a file, 
+        or read from cached file.
+        """
+
+        try:
+            page = requests.get(self.jobsQueryURL)
+            if "The page you’re looking for can’t be" in page.text:
+                print(f"Job URL {self.jobsQueryURL} could not be found")
+                exit()
+        except:
+            print(f"Could not get page for {self.jobsQueryURL}")
+            exit()
+        soup = BeautifulSoup(page.content, "html.parser")
+
+        
+        if isCached:
+            # caching purposes (only about 0.1% change per hour)
+            try:
+                # get all job URLs from cached file
+                f = open(self.jobTitlesCacheFilename, "r")
+                allUrlsStr = f.read()
+                allJobUrls = list(eval(allUrlsStr))
+                print(f"Using the cached {len(allJobUrls)} urls")
+                f.close()
+            except:
+                print(f"Could not read cached file {self.jobTitlesCacheFilename}. Going to read from website")
+                isCached = False
+        
+        if not isCached:
+            # get number of pages for naive iteration
+
+            allJobUrls = self.getAllJobUrls(soup)
+            f = open(self.jobTitlesCacheFilename, "w")
+            f.write(str(allJobUrls))
+            f.close()
+
+        print(f"Beginning to scan for entry level positions. This may take a while. Check {self.outputFilename} for results...")
+        self.getEntryLevelPositionsFromList(allJobUrls, self.outputFilename)    
+
+    
+class NewJobsSiteScraper(BaseJobsSiteScraper):
+    """
+    Only gets new jobs
+    """
+    def getNewEntryLevelPositions(self, allJobUrls : list[str], inputFilename="EntryLevelPositions.txt", outputFilename="EntryLevelPositionsNew.txt") -> int:
+        # TODO: go until redundant page
         """
         Retrieves entry level job positions from a list of job URLs and writes them to a file.
         Also prints progress to the console.
