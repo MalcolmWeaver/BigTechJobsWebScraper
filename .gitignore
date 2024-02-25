@@ -1,2 +1,5 @@
 venv/
 beatifulsoup/
+
+oldTextFiles/
+__pycache__/

@@ -4,7 +4,7 @@ import time
 import re
 from utils import BaseJobsSiteScraper
 
-class Meta(BaseJobsSiteScraper):
+class Amazon(BaseJobsSiteScraper):
     def __init__(self):
         print("Meta Jobs Scraper")
         print("Base Query URL:", self.jobsQueryURL)
