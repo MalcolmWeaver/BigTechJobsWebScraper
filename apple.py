@@ -3,16 +3,17 @@ from bs4 import BeautifulSoup
 import time
 import re
 from utils import NewJobsSiteScraper, BaseJobsSiteScraper
+from datetime import datetime
 
-class Apple(BaseJobsSiteScraper):
-    
+class Apple(NewJobsSiteScraper):
+    outputFilename = "no-output-filename"
     def __init__(self):
         print("Apple Jobs Scraper")
-        print("Base Query URL:", self.jobsQueryURL)
+        self.outputFilename = self.getOutputFilename()
 
     
-
-    jobTitlesCacheFilename = "allJobUrlsCacheTest.txt"
+    todayString = datetime.today().strftime('%Y-%m-%d')
+    jobTitlesCacheFilename = f"allJobUrlsCache.txt"
 
     # Apple Jobs URL
     jobsURLPrefix = "https://jobs.apple.com"
@@ -29,15 +30,14 @@ class Apple(BaseJobsSiteScraper):
     # Suffix appended to jobsQueryURL to specify pagination
     jobsQueryURLPageSuffix = "&page="
 
-    outputFilename = "no-output-filename"
+
     def getOutputFilename(self):
-        outputFilename = f"{self.__class__.__name__}EntryLevelPositions-{self.jobsQueryURL}.txt"
-    
+        return f"{self.__class__.__name__}EntryLevelPositions{self.todayString}.txt"
 
     def getJobUrl(self, job):
         return f"{self.jobsURLPrefix}{job}"
     
-    def getAllJobUrls(self, soup):
+    def getAllJobUrls(self, soup, onlyNew=False, last5Jobs=[]):
         """
         Retrieve all job URLs from the specified number of pages (all of them).
 
@@ -46,8 +46,11 @@ class Apple(BaseJobsSiteScraper):
         """
         t0 = time.time()
         allJobUrls = []
-
         numPages = getNumberOfPages(soup)
+        """Only New Logic: save the most recent 5 jobs. If you one of those jobs (sorted by newest), you're done.
+        This logic breaks down when all 5 of the most recent jobs are deleted, but by then, you should probably rerun everything
+        """
+
         # Naive Pagination: loop from 1 to numPages (this should be the number of pages of job results)
         for pageIdx in range(1, numPages+1):
             # loop through all the pages
@@ -66,7 +69,15 @@ class Apple(BaseJobsSiteScraper):
             pageNumber = getCurrentPageNumber(soup)
             assert pageNumber == pageIdx, "Page number does not match pagination index"
 
-            allJobUrls += getJobUrlsFromJobsQueriedPage(soup)
+            newJobUrlsFromQuery = getJobUrlsFromJobsQueriedPage(soup)
+            if onlyNew:
+                for idx, job in enumerate(newJobUrlsFromQuery):
+                    if job in last5Jobs:
+                        allJobUrls += newJobUrlsFromQuery[:idx]
+                        return allJobUrls
+                        
+
+            allJobUrls += newJobUrlsFromQuery
 
         t1 = time.time()
         print(f"Total number of Apple jobs found: {len(allJobUrls)}. Elapsed time: {t1-t0}")
@@ -206,8 +217,8 @@ def getJobUrlsFromJobsQueriedPage(soup):
 
 if __name__ == "__main__":
     apple = Apple()
-    useCache = True
-    apple.getEntryLevelPositions(useCache)
+    onlyNew = True
+    apple.getEntryLevelPositions(onlyNew=True, isCached=False)
 
  # Testing Data
 # testTitlesUrls = ['/en-us/details/200525855/system-integration-lead?team=SFTWR','/en-us/details/200525606/software-engineering-program-manager-media-frameworks-apple-vision-pro?team=SFTWR','/en-us/details/200539431/senior-international-program-manager-services?team=SFTWR', '/en-us/details/200489593/natural-language-generative-modeling-research-engineer-siml-ise?team=MLAI', '/en-us/details/200519780/ai-safety-robustness-analysis-manager-system-intelligent-and-machine-learning-ise?team=SFTWR']
