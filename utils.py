@@ -4,6 +4,9 @@ import time
 import re
 
 class BaseJobsSiteScraper:
+
+    def getAllJobUrls(self, numPages, soup):
+        raise NotImplementedError(self)
     def getJobUrl(self) -> str:
         raise NotImplementedError(self)
     

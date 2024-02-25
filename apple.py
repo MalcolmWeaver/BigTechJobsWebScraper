@@ -9,7 +9,7 @@ class Apple(BaseJobsSiteScraper):
         print("Apple Jobs Scraper")
         print("Base Query URL:", self.jobsQueryURL)
 
-    jobTitlesCacheFilename = "allJobUrlsCacheTest.txt"
+    jobTitlesCacheFilename = "allJobUrlsCache.txt"
 
     # Apple Jobs URL
     jobsURLPrefix = "https://jobs.apple.com"
@@ -29,7 +29,7 @@ class Apple(BaseJobsSiteScraper):
     def getJobUrl(self, job):
         return f"{self.jobsURLPrefix}{job}"
     
-    def getAllJobUrls(self,numPages, soup):
+    def getAllJobUrls(self, soup):
         """
         Retrieve all job URLs from the specified number of pages (all of them).
 
@@ -39,6 +39,7 @@ class Apple(BaseJobsSiteScraper):
         t0 = time.time()
         allJobUrls = []
 
+        numPages = getNumberOfPages(soup)
         # Naive Pagination: loop from 1 to numPages (this should be the number of pages of job results)
         for pageIdx in range(1, numPages+1):
             # loop through all the pages
