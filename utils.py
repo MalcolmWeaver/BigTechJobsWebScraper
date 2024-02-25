@@ -2,8 +2,20 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import re
+from datetime import datetime
 
 class BaseJobsSiteScraper:
+    outputFilename = "no-output-filename"
+    jobTitlesCacheFilename = "allJobUrlsCache.txt"
+    todayString = datetime.today().strftime('%Y-%m-%d')
+    jobsURLPrefix = ""
+    locations = {
+        "Seattle": "",
+        "Austin": "",
+        "Bay Area": "",
+    }
+    sortSeg = ""
+    
 
     def getAllJobUrls(self, soup) -> list[str]:
         raise NotImplementedError(self)

@@ -3,36 +3,41 @@ from bs4 import BeautifulSoup
 import time
 import re
 from utils import NewJobsSiteScraper, BaseJobsSiteScraper
-from datetime import datetime
 
 class Apple(NewJobsSiteScraper):
-    outputFilename = "no-output-filename"
-    def __init__(self):
-        print("Apple Jobs Scraper")
-        self.outputFilename = self.getOutputFilename()
-
     
-    todayString = datetime.today().strftime('%Y-%m-%d')
-    jobTitlesCacheFilename = f"allJobUrlsCache.txt"
+    def __init__(self, location="Seattle"):
+        print("Apple Jobs Scraper")
+
+        className = self.__class__.__name__
+
+        self.jobTitlesCacheFilename = f"{className}AllJobUrlsCache-{location}.txt"
+        self.location = location
+        self.jobsQueryURL = self.getQueryURL(location)
+        self.outputFilename = self.getOutputFilename()
+    
 
     # Apple Jobs URL
     jobsURLPrefix = "https://jobs.apple.com"
 
-    # locationFilter = "location=united-states-USA"
-    locationFilter = "location=washington-state1000"
-    # locationFilter = "location=austin-metro-area-AUSMETRO+austin-AST"
+    locations = {
+        "Seattle": "location=washington-state1000",
+        "Austin": "location=austin-metro-area-AUSMETRO+austin-AST",
+        "Bay Area": "location=san-francisco-bay-area-SFMETRO",
+    }
 
     sortSeg = "&sort_by=new"
 
     # Apple Jobs URL with provided filters
-    jobsQueryURL = f"{jobsURLPrefix}/en-us/search?{locationFilter}{sortSeg}&&team=devops-and-site-reliability-SFTWR-DSR%20engineering-project-management-SFTWR-EPM%20information-systems-and-technology-SFTWR-ISTECH%20machine-learning-and-ai-SFTWR-MCHLN%20security-and-privacy-SFTWR-SEC%20software-quality-automation-and-tools-SFTWR-SQAT%20wireless-software-SFTWR-WSFT%20analog-and-digital-design-HRDWR-ADD%20engineering-project-management-HRDWR-EPM%20machine-learning-and-ai-HRDWR-MCHLN%20system-design-and-test-engineering-HRDWR-SDE%20wireless-hardware-HRDWR-WT%20machine-learning-infrastructure-MLAI-MLI%20deep-learning-and-reinforcement-learning-MLAI-DLRL%20natural-language-processing-and-speech-technologies-MLAI-NLP%20computer-vision-MLAI-CV%20cloud-and-infrastructure-SFTWR-CLD%20apps-and-frameworks-SFTWR-AF%20core-operating-systems-SFTWR-COS&"
+    def getQueryURL(self, location):
+        return f"{self.jobsURLPrefix}/en-us/search?{self.locations[self.location]}{self.sortSeg}&&team=devops-and-site-reliability-SFTWR-DSR%20engineering-project-management-SFTWR-EPM%20information-systems-and-technology-SFTWR-ISTECH%20machine-learning-and-ai-SFTWR-MCHLN%20security-and-privacy-SFTWR-SEC%20software-quality-automation-and-tools-SFTWR-SQAT%20wireless-software-SFTWR-WSFT%20analog-and-digital-design-HRDWR-ADD%20engineering-project-management-HRDWR-EPM%20machine-learning-and-ai-HRDWR-MCHLN%20system-design-and-test-engineering-HRDWR-SDE%20wireless-hardware-HRDWR-WT%20machine-learning-infrastructure-MLAI-MLI%20deep-learning-and-reinforcement-learning-MLAI-DLRL%20natural-language-processing-and-speech-technologies-MLAI-NLP%20computer-vision-MLAI-CV%20cloud-and-infrastructure-SFTWR-CLD%20apps-and-frameworks-SFTWR-AF%20core-operating-systems-SFTWR-COS&"
 
     # Suffix appended to jobsQueryURL to specify pagination
     jobsQueryURLPageSuffix = "&page="
 
 
     def getOutputFilename(self):
-        return f"{self.__class__.__name__}EntryLevelPositions{self.todayString}.txt"
+        return f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt"
 
     def getJobUrl(self, job):
         return f"{self.jobsURLPrefix}{job}"
