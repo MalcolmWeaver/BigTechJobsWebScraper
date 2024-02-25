@@ -3,51 +3,20 @@ from bs4 import BeautifulSoup
 import time
 import re
 
-# Apple Jobs URL
-jobsURLPrefix = "https://jobs.apple.com"
+# meta Jobs URL
+jobsURLPrefix = "https://www.metacareers.com/jobs"
 
-locationFilter = "location=united-states-USA"
+# locationFilter = "location=united-states-USA"
+locationFilter = "&offices[0]=Menlo%20Park%2C%20CA&offices[1]=Seattle%2C%20WA"
 # locationFilter = "location=austin-metro-area-AUSMETRO+austin-AST"
 
 # Apple Jobs URL with provided filters
-jobsQueryURL = f"{jobsURLPrefix}/en-us/search?{locationFilter}&sort=newest&team=apps-and-frameworks-SFTWR-AF%20cloud-and-infrastructure-SFTWR-CLD%20core-operating-systems-SFTWR-COS%20engineering-project-management-SFTWR-EPM%20information-systems-and-technology-SFTWR-ISTECH%20machine-learning-and-ai-SFTWR-MCHLN%20software-quality-automation-and-tools-SFTWR-SQAT%20wireless-software-SFTWR-WSFT%20machine-learning-infrastructure-MLAI-MLI%20deep-learning-and-reinforcement-learning-MLAI-DLRL%20natural-language-processing-and-speech-technologies-MLAI-NLP%20computer-vision-MLAI-CV%20engineering-project-management-HRDWR-EPM%20machine-learning-and-ai-HRDWR-MCHLN%20devops-and-site-reliability-SFTWR-DSR%20security-and-privacy-SFTWR-SEC"
+jobsQueryURL = f"{jobsURLPrefix}?q=software{locationFilter}&sort_by_new=true"
 
 # Suffix appended to jobsQueryURL to specify pagination
 jobsQueryURLPageSuffix = "&page="
 
-outputFilename = "EntryLevelPositions.txt"
-
-
-def getNumberOfPages(soup):
-    """
-    Funtion to get number of pages to loop through for naive pagination by reading html (see element with id="frmPagination")
-    
-    Returns: (int) the number of pages of the job query results according to the website
-    """
-    pageNumberElements = soup.find_all(class_="pageNumber")
-    assert len(pageNumberElements) == 2, "Page Numbers (id='frmPagination') Formatting Has Changed"
-    numPages = int(pageNumberElements[1].text)
-    return numPages
-
-def getCurrentPageNumber(soup):
-    pageNumber = soup.find(id="page-number")
-    return(int(pageNumber.attrs['value']))
-
-def getJobUrlsFromJobsQueriedPage(soup):
-    """
-    Function to get job URLs from the job queried page's soup.
-
-    Returns:
-    list: A list of job URLs extracted from the soup of a (one of many) page.
-    """
-
-    # find all job titles from the queried table
-    jobElements = soup.find_all(class_="table--advanced-search__title")
-    assert len(jobElements) > 0, "No Jobs Found"
-
-    # get the link to each job posting from the job query
-    jobUrls = [jobElement["href"] for jobElement in jobElements]
-    return jobUrls
+outputFilename = "MetaEntryLevelPositions.txt"
 
 def getAllJobUrls(numPages, soup):
     """
@@ -187,81 +156,9 @@ def edExAreEntryLevel(educationAndExperience):
         return False
     return True
 
-def getEntryLevelPositions(allJobUrls):
-    """
-    Retrieves entry level job positions from a list of job URLs and writes them to a file.
-    Also prints progress to the console.
 
-    Returns:
-    int the number of entry level positions found
-    """
-    t0 = time.time()
-    f = open(outputFilename, "w")
 
-    numEntryLevelPositions = 0
-    for idx, job in enumerate(allJobUrls):
-
-        # Print progress every 20 jobs (there are  max 20 jobs per page)
-        if (idx + 1 ) % 20 == 0:
-            print(f"Processed {idx+1} jobs (20 per page). Time elapsed: {time.time() - t0}.")
-            print(f"Percent entry level: {numEntryLevelPositions / (idx+1) * 100}%. Percent complete: {(idx+1) / len(allJobUrls) * 100}%. Expected time remaining: {(len(allJobUrls) - (idx+1)) / (idx + 1) * (time.time() - t0)/60} minutes")
-            f.flush()
-
-        isEntryLevel = True
-
-        # get the job description page
-        jobUrl = jobsURLPrefix+job
-        try:
-            page = requests.get(jobUrl)
-            if "The page you’re looking for can’t be" in page.text:
-                print(f"Job URL {jobUrl} could not be found")
-                isEntryLevel = False
-        except:
-            print(f"Could not get page for {jobUrl}")
-            continue
-        soup = BeautifulSoup(page.content, "html.parser")
-
-        # get the job title and check if it could be an entry level position
-        try:
-            title = getJobTitle(soup)
-            if not TitleIsEntryLevel(title):
-                isEntryLevel = False
-        except:
-            print(f"Could not get TITLE for {jobUrl}")
-
-        # get the qualifications and check if they could be for an entry level position
-        try:
-            qualifications = getQualifications(soup)
-            if not qualificationsAreEntryLevel(qualifications):
-                isEntryLevel = False
-        except:
-            print(f"Could not get QUALIFICATIONS for {jobUrl}")
-
-        # get the education and experience and check if they could be for an entry level position
-        try:
-            educationAndExperience = getEdEx(soup)
-            if not edExAreEntryLevel(educationAndExperience):
-                isEntryLevel = False
-        except: 
-            print(f"Could not get EDUCATION AND EXPERIENCE for {jobUrl}")
-
-        # write to file
-        if isEntryLevel:
-            f.write(f"{jobUrl}\n")
-            numEntryLevelPositions += 1
-
-    t1 = time.time()
-    print(f"Time to get entry level positions: {t1-t0}")
-    f.close()
-    return numEntryLevelPositions
-        
 if __name__ == "__main__":
-    """
-    Get the soup for the (first) page of query results.
-    Get the number of pages for pagination.
-    Optionally get all the job URLs from all pages and cache to a file, 
-    or read from cached file.
-    """
     try:
         page = requests.get(jobsQueryURL)
         if "The page you’re looking for can’t be" in page.text:
@@ -273,9 +170,6 @@ if __name__ == "__main__":
         exit()
     soup = BeautifulSoup(page.content, "html.parser")
     
-    # get number of pages for naive iteration
-    numPages = getNumberOfPages(soup)
-
     # get all job URLs from website
     allJobUrls = getAllJobUrls(numPages, soup)
     # caching purposes (only about 0.1% change per hour)
