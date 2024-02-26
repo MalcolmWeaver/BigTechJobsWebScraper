@@ -247,7 +247,7 @@ class Apple(BaseJobsSiteScraper):
                 f = open(self.jobTitlesCacheFilename, "r")
                 allUrlsStr = f.read()
                 allJobUrls = list(eval(allUrlsStr))
-                print(self.jobTitlesCacheFilename, allJobUrls)
+                # print(self.jobTitlesCacheFilename, allJobUrls)
                 print(f"There are {len(allJobUrls)} cached urls from {self.jobsQueryURL}")
                 f.close()
             except:

@@ -33,10 +33,28 @@ class Amazon(BaseJobsSiteScraper):
 
         # jobs query url is really an api call
         self.jobsQueryURL = self.getQueryURL(0)
-        self.locations["Seattle"] = "&loc_query=Greater+Seattle+Area%2C+WA%2C+United+States&latitude=&longitude=&loc_group_id=seattle-metro&invalid_location=false&country=&city=&region=&county="
-        self.locations["Bay Area"] = "&loc_query=San+Francisco+Bay+Area%2C+CA%2C+United+States&latitude=&longitude=&loc_group_id=san-francisco-bay-area&invalid_location=false&country=&city=&region=&county="
-        self.locations["Austin"] = "&loc_query=Austin%2C+TX%2C+United+States&latitude=30.26759&longitude=-97.74299&loc_group_id=&invalid_location=false&country=USA&city=Austin&region=Texas&county=Travis"
-        
+        seattle_location = (
+            "&loc_query=Greater+Seattle+Area%2C+WA%2C+United+States"
+            "&latitude=&longitude=&loc_group_id=seattle-metro"
+            "&invalid_location=false&country=&city=&region=&county="
+        )
+
+        bay_area_location = (
+            "&loc_query=San+Francisco+Bay+Area%2C+CA%2C+United+States"
+            "&latitude=&longitude=&loc_group_id=san-francisco-bay-area"
+            "&invalid_location=false&country=&city=&region=&county="
+        )
+
+        austin_location = (
+            "&loc_query=Austin%2C+TX%2C+United+States"
+            "&latitude=30.26759&longitude=-97.74299&loc_group_id="
+            "&invalid_location=false&country=USA&city=Austin&region=Texas&county=Travis"
+        )
+
+        self.locations["Seattle"] = seattle_location
+        self.locations["Bay Area"] = bay_area_location
+        self.locations["Austin"] = austin_location
+
         print("Base Query URL:", self.jobsQueryURL) 
         print("Output File:", self.outputFilename)  
     jobsURLPrefix = "https://www.amazon.jobs/en"
@@ -111,7 +129,7 @@ class Amazon(BaseJobsSiteScraper):
                 continue
             apiResponseJson = apiResponse.json()            
 
-            newJobUrlsFromQuery = [job["job_path"] for job in apiResponseJson["jobs"]]
+            newJobUrlsFromQuery = [self.getJobPrintable(job) for job in apiResponseJson["jobs"]]
             sweJobUrlsFromQuery = [
                 job for job in apiResponseJson["jobs"] 
                     if job["job_category"] == "Software Development" or
@@ -125,6 +143,12 @@ class Amazon(BaseJobsSiteScraper):
                     job["job_family"] == "Research Science"
             ]
 
+            if onlyNew:
+                for idx, job in enumerate(newJobUrlsFromQuery):
+                    if job in last5Jobs:
+                        allJobUrls += newJobUrlsFromQuery[:idx]
+                        return allJobUrls
+                    
             nEntryLevelPositions += self.getEntryLevelPositionsFromList(
                 sweJobUrlsFromQuery, 
                 self.outputFilename, 
@@ -132,16 +156,9 @@ class Amazon(BaseJobsSiteScraper):
                 printTimes=False,
                 printResults=False
                 )
-            if onlyNew:
-                for idx, job in enumerate(newJobUrlsFromQuery):
-                    if job in last5Jobs:
-                        allJobUrls += newJobUrlsFromQuery[:idx]
-                        return allJobUrls
-                        
-
+            
             allJobUrls += newJobUrlsFromQuery
             
-
         t1 = time.time()
         print(
             f"Total number of {self.__class__.__name__}"
@@ -177,15 +194,6 @@ class Amazon(BaseJobsSiteScraper):
 
         if onlyNew:
             assert not isCached, "Cached data is not new data."
-        # try:
-        #     apiResponse = requests.get(self.jobsQueryURL)
-        #     if "The page you’re looking for can’t be" in page.text:
-        #         print(f"Job URL {self.jobsQueryURL} could not be found")
-        #         exit()
-        # except:
-        #     print(f"Could not get page for {self.jobsQueryURL}")
-        #     exit()
-        # apiJson = apiResponse.json()
 
         allJobUrls = []
               
@@ -197,6 +205,11 @@ class Amazon(BaseJobsSiteScraper):
         if onlyNew:
             # get number of pages until you hit a repeat of the last 5 jobs 
             # (should have already collected)
+            f = open(self.jobTitlesCacheFilename, "r")
+            allUrlsStr = f.read()
+            allJobUrls = list(eval(allUrlsStr))
+            f.close()
+
             newJobUrls = self.getAndCheckAllJobUrls(
                 onlyNew=onlyNew, last5Jobs=allJobUrls[:5]
             )
