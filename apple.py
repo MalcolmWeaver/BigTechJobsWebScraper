@@ -2,21 +2,35 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import re
-from utils import NewJobsSiteScraper, BaseJobsSiteScraper
+from utils import BaseJobsSiteScraper
 
-class Apple(NewJobsSiteScraper):
+class Apple(BaseJobsSiteScraper):
     
     def __init__(self, location="Seattle"):
         print("Apple Jobs Scraper")
-
-        className = self.__class__.__name__
-
-        self.jobTitlesCacheFilename = f"{className}AllJobUrlsCache-{location}.txt"
+        self.location = location
+        self.outputFilename = f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt"
+        self.jobTitlesCacheFilename = f"{self.__class__.__name__}AllJobUrlsCache-{location}.txt"
         self.location = location
         self.jobsQueryURL = self.getQueryURL(location)
-        self.outputFilename = self.getOutputFilename()
-    
-
+        self.jobsQueryURL = (
+            f"{self.jobsURLPrefix}/en-us/search?"
+            f"{self.locations[self.location]}"
+            f"{self.sortSeg}"
+            "&team=devops-and-site-reliability-SFTWR-DSR%20"
+            "engineering-project-management-SFTWR-EPM%20"
+            "information-systems-and-technology-SFTWR-ISTECH%20"
+            "machine-learning-and-ai-SFTWR-MCHLN%20security-and-"
+            "privacy-SFTWR-SEC%20software-quality-automation-and-tools-SFTWR-SQAT%20"
+            "wireless-software-SFTWR-WSFT%20analog-and-digital-design-HRDWR-ADD%20"
+            "engineering-project-management-HRDWR-EPM%20machine-learning-and-"
+            "ai-HRDWR-MCHLN%20system-design-and-test-engineering-HRDWR-SDE%20"
+            "wireless-hardware-HRDWR-WT%20machine-learning-infrastructure-MLAI-MLI%20"
+            "deep-learning-and-reinforcement-learning-MLAI-DLRL%20"
+            "natural-language-processing-and-speech-technologies-MLAI-NLP%20"
+            "computer-vision-MLAI-CV%20cloud-and-infrastructure-SFTWR-CLD%20"
+            "apps-and-frameworks-SFTWR-AF%20core-operating-systems-SFTWR-COS&"
+        )
     # Apple Jobs URL
     jobsURLPrefix = "https://jobs.apple.com"
 
@@ -28,6 +42,7 @@ class Apple(NewJobsSiteScraper):
 
     sortSeg = "&sort_by=new"
 
+    
     # Apple Jobs URL with provided filters
     def getQueryURL(self, location):
         return f"{self.jobsURLPrefix}/en-us/search?{self.locations[self.location]}{self.sortSeg}&&team=devops-and-site-reliability-SFTWR-DSR%20engineering-project-management-SFTWR-EPM%20information-systems-and-technology-SFTWR-ISTECH%20machine-learning-and-ai-SFTWR-MCHLN%20security-and-privacy-SFTWR-SEC%20software-quality-automation-and-tools-SFTWR-SQAT%20wireless-software-SFTWR-WSFT%20analog-and-digital-design-HRDWR-ADD%20engineering-project-management-HRDWR-EPM%20machine-learning-and-ai-HRDWR-MCHLN%20system-design-and-test-engineering-HRDWR-SDE%20wireless-hardware-HRDWR-WT%20machine-learning-infrastructure-MLAI-MLI%20deep-learning-and-reinforcement-learning-MLAI-DLRL%20natural-language-processing-and-speech-technologies-MLAI-NLP%20computer-vision-MLAI-CV%20cloud-and-infrastructure-SFTWR-CLD%20apps-and-frameworks-SFTWR-AF%20core-operating-systems-SFTWR-COS&"
@@ -35,10 +50,9 @@ class Apple(NewJobsSiteScraper):
     # Suffix appended to jobsQueryURL to specify pagination
     jobsQueryURLPageSuffix = "&page="
 
-
-    def getOutputFilename(self):
-        return f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt"
-
+    def getJobPrintable(self, job):
+        return job
+    
     def getJobUrl(self, job):
         return f"{self.jobsURLPrefix}{job}"
     
@@ -186,6 +200,80 @@ class Apple(NewJobsSiteScraper):
         allReqs += addReqs
 
         return allReqs
+    
+    def getJobData(self, job):
+        jobUrl = self.getJobUrl(job)
+        print("Job URL:", jobUrl)
+        try:
+            page = requests.get(jobUrl)
+            if "The page you’re looking for can’t be" in page.text or "404 Not Found" in page.text:
+                print(f"Job URL {jobUrl} could not be found")
+                isEntryLevel = False
+        except:
+            print(f"Could not get page for {jobUrl}")
+            return None
+        return BeautifulSoup(page.content, "html.parser")
+    
+    def getEntryLevelPositions(self, onlyNew=False, isCached=False):
+        """
+        Retrieve all job URLs from the specified number of pages (all of them).
+        """
+
+        """
+        Get the soup for the (first) page of query results.
+        Get the number of pages for pagination.
+        Optionally get all the job URLs from all pages and cache to a file, 
+        or read from cached file.
+        """
+
+        if onlyNew:
+            assert not isCached, "Cached data is not new data. Make sure if you select onlyNew, isCached is False."
+
+        try:
+            page = requests.get(self.jobsQueryURL)
+            if "The page you’re looking for can’t be" in page.text:
+                print(f"Job URL {self.jobsQueryURL} could not be found")
+                exit()
+        except:
+            print(f"Could not get page for {self.jobsQueryURL}")
+            exit()
+        soup = BeautifulSoup(page.content, "html.parser")
+
+        allJobUrls = []
+        if isCached or onlyNew:
+            # caching purposes (only about 0.1% change per hour)
+            try:
+                # get all job URLs from cached file
+                f = open(self.jobTitlesCacheFilename, "r")
+                allUrlsStr = f.read()
+                allJobUrls = list(eval(allUrlsStr))
+                print(self.jobTitlesCacheFilename, allJobUrls)
+                print(f"There are {len(allJobUrls)} cached urls from {self.jobsQueryURL}")
+                f.close()
+            except:
+                print(f"Could not read cached file {self.jobTitlesCacheFilename}. Going to read from website")
+                isCached = False
+        
+        if not isCached:
+            
+            if onlyNew:
+                # get number of pages until you hit a repeat of the last 5 jobs (should have already collected)
+                newJobUrls = self.getAllJobUrls(soup, onlyNew=onlyNew, last5Jobs=allJobUrls[:5])
+                if newJobUrls == []:
+                    print("No new jobs found")
+                    return
+                allJobUrls = newJobUrls
+            else :
+                # get number of pages for naive iteration
+                allJobUrls = self.getAllJobUrls(soup, onlyNew=onlyNew)
+            f = open(self.jobTitlesCacheFilename, "w")
+            f.write(str(allJobUrls)+"\n")
+            print(f"{len(allJobUrls)} urls were cached from {self.jobsQueryURL}")
+            f.close()
+
+        print(f"Beginning to scan for entry level positions. This may take a while. Check {self.outputFilename} for results...")
+        self.getEntryLevelPositionsFromList(allJobUrls, self.outputFilename)
+
 
 
 def getNumberOfPages(soup):
@@ -218,7 +306,7 @@ def getJobUrlsFromJobsQueriedPage(soup):
 
     # get the link to each job posting from the job query
     jobUrls = [jobElement["href"] for jobElement in jobElements]
-    return jobUrls
+    return jobUrls  
 
 if __name__ == "__main__":
     apple = Apple()

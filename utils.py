@@ -5,8 +5,18 @@ import re
 from datetime import datetime
 
 class BaseJobsSiteScraper:
+    def init(self, location="Seattle"):
+        print(f"{self.__class__.__name__} Jobs Scraper")
+        self.location = location
+        self.outputFilename = f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt"
+        self.jobTitlesCacheFilename = f"{self.__class__.__name__}AllJobsCache-{location}.txt"
+        self.location = location
+        self.jobsQueryURL = self.getQueryURL(location)
+        self.jobsQueryURL = f"{self.jobsURLPrefix}/search?base_query=software&{self.locations[self.location]}"
+
+    jobsQueryURL = ""
     outputFilename = "no-output-filename"
-    jobTitlesCacheFilename = "allJobUrlsCache.txt"
+    jobTitlesCacheFilename = "allJobsCache.txt"
     todayString = datetime.today().strftime('%Y-%m-%d')
     jobsURLPrefix = ""
     locations = {
@@ -14,13 +24,16 @@ class BaseJobsSiteScraper:
         "Austin": "",
         "Bay Area": "",
     }
+    location = "Seattle"
     sortSeg = ""
-    
 
-    def getAllJobUrls(self, soup) -> list[str]:
+    def getQueryURL(self, location, offset=0):
         raise NotImplementedError(self)
-    def getJobUrl(self) -> str:
+
+    def getAllJobs(self, soup, onlyNew=False, last5Jobs=[]) -> list[str]:
         raise NotImplementedError(self)
+    def getJobUrl(self, job):
+        return f"{self.jobsURLPrefix}{job}"
     
     def getJobTitle(self, soup) -> str:
         raise NotImplementedError(self)
@@ -62,7 +75,7 @@ class BaseJobsSiteScraper:
                 return False
         return True
     
-    def getEntryLevelPositionsFromList(self, allJobUrls : list[str], outputFilename="EntryLevelPositions.txt") -> int:
+    def getEntryLevelPositionsFromList(self, allJobs : list[str], outputFilename="EntryLevelPositions.txt", writeTitle=True, printTimes=True, printResults=True) -> int:
         # TODO: since date parameter
         """
         Retrieves entry level job positions from a list of job URLs and writes them to a file.
@@ -74,127 +87,74 @@ class BaseJobsSiteScraper:
         t0 = time.time()
         try:
             f = open(outputFilename, "a+")
-            f.write(f"\nDate: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            if(writeTitle):
+                f.write(f"\nDate: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         except:
             print("failed to open file")
         
 
         numEntryLevelPositions = 0
-        for idx, job in enumerate(allJobUrls):
+        for idx, job in enumerate(allJobs):
+            jobPrintable = self.getJobPrintable(job)
 
             # Print progress every 20 jobs (there are  max 20 jobs per page)
             if (idx + 1 ) % 20 == 0:
-                print(f"Processed {idx+1} jobs. Time elapsed: {time.time() - t0}.")
-                print(f"Percent entry level: {numEntryLevelPositions / (idx+1) * 100}%. Percent complete: {(idx+1) / len(allJobUrls) * 100}%. Expected time remaining: {(len(allJobUrls) - (idx+1)) / (idx + 1) * (time.time() - t0)/60} minutes")
+                print(f"\nProcessed {idx+1} jobs. Time elapsed: {time.time() - t0}.")
+                print(
+                    f"Percent entry level: {numEntryLevelPositions / (idx+1) * 100}%. "
+                    f"Percent complete: {(idx+1) / len(allJobs) * 100}%. "
+                    f"Expected time remaining: "
+                    f"{(len(allJobs) - (idx+1)) / (idx + 1) * (time.time() - t0)/60} minutes\n"
+                )
                 f.flush()
 
             isEntryLevel = True
 
             # get the job description page
-            jobUrl = self.getJobUrl(job)
-            print("Job URL:", jobUrl)
-            try:
-                page = requests.get(jobUrl)
-                if "The page you’re looking for can’t be" in page.text or "404 Not Found" in page.text:
-                    print(f"Job URL {jobUrl} could not be found")
-                    isEntryLevel = False
-            except:
-                print(f"Could not get page for {jobUrl}")
+            jobData = self.getJobData(job)
+            if jobData == None:
                 continue
-            soup = BeautifulSoup(page.content, "html.parser")
 
             # get the job title and check if it could be an entry level position
+            # TODO: implement title getting/checking from search page
+            # maybe just reges the url itself?
             title = ""
             try:
-                title = self.getJobTitle(soup)    
+                title = self.getJobTitle(jobData)    
             except:
-                print(f"Could not get TITLE for {jobUrl}")
+                print(f"Could not get TITLE for {jobPrintable}")
 
             if not self.jobTitleIsEntryLevel(title):
-                print(f"Job title {title} is not for an entry level position")
+                if printResults:
+                    print(f"Job title {title} is not for an entry level position")
                 isEntryLevel = False
 
             # get the qualifications and check if they could be for an entry level position
             qualifications = []
             try:
-                qualifications = self.getQualifications(soup)
+                qualifications = self.getQualifications(jobData)
                 
             except:
-                print(f"Could not get QUALIFICATIONS for {jobUrl}")
+                print(f"Could not get QUALIFICATIONS for {jobPrintable}")
             if not self.qualificationsAreEntryLevel(qualifications):
-                print(f"Qualifications are not for an entry level position")
+                if printResults:
+                    print(f"Qualifications for {title} are not for an entry level position")
                 isEntryLevel = False
             # write to file
             if isEntryLevel:
-                print(f"Entry level position found: {jobUrl}")
-                f.write(f"{jobUrl}\n")
+                if printResults:
+                    print(f"Entry level position found: {jobPrintable}")
+                f.write(f"{jobPrintable}\n")
                 numEntryLevelPositions += 1
 
         t1 = time.time()
-        print(f"Time to get entry level positions: {t1-t0}")
+        if(printTimes):
+            print(f"Time to get entry level positions: {t1-t0}")
         f.close()
         return numEntryLevelPositions
 
     def getEntryLevelPositions(self, onlyNew=False, isCached=False):
-        """
-        Retrieve all job URLs from the specified number of pages (all of them).
-        """
-
-        """
-        Get the soup for the (first) page of query results.
-        Get the number of pages for pagination.
-        Optionally get all the job URLs from all pages and cache to a file, 
-        or read from cached file.
-        """
-
-        if onlyNew:
-            assert not isCached, "Cached data is not new data. Make sure if you select onlyNew, isCached is False."
-
-        try:
-            page = requests.get(self.jobsQueryURL)
-            if "The page you’re looking for can’t be" in page.text:
-                print(f"Job URL {self.jobsQueryURL} could not be found")
-                exit()
-        except:
-            print(f"Could not get page for {self.jobsQueryURL}")
-            exit()
-        soup = BeautifulSoup(page.content, "html.parser")
-
-        allJobUrls = []
-        if isCached or onlyNew:
-            # caching purposes (only about 0.1% change per hour)
-            try:
-                # get all job URLs from cached file
-                f = open(self.jobTitlesCacheFilename, "r")
-                allUrlsStr = f.read()
-                allJobUrls = list(eval(allUrlsStr))
-                print(f"There are {len(allJobUrls)} cached urls")
-                f.close()
-            except:
-                print(f"Could not read cached file {self.jobTitlesCacheFilename}. Going to read from website")
-                isCached = False
-        
-        if not isCached:
-            
-            if onlyNew:
-                # get number of pages until you hit a repeat of the last 5 jobs (should have already collected)
-                newJobUrls = self.getAllJobUrls(soup, onlyNew=onlyNew, last5Jobs=allJobUrls[:5])
-                if newJobUrls == []:
-                    print("No new jobs found")
-                    return
-                allJobUrls = newJobUrls
-            else :
-                # get number of pages for naive iteration
-                allJobUrls = self.getAllJobUrls(soup, onlyNew=onlyNew)
-            f = open(self.jobTitlesCacheFilename, "w")
-            f.write(str(allJobUrls))
-            print(f"{len(allJobUrls)} urls were cached")
-            f.close()
-
-        print(f"Beginning to scan for entry level positions. This may take a while. Check {self.outputFilename} for results...")
-        self.getEntryLevelPositionsFromList(allJobUrls, self.outputFilename)    
-
-class NewJobsSiteScraper(BaseJobsSiteScraper):
-    """Only works if can sort by new"""
-    def getAllJobUrls(self, soup, stopOnOldJobs=False, last5Jobs=[]) -> list[str]:
-        raise NotImplementedError(self)
+        raise NotImplementedError
+    
+    def getJobPrintable(self, job):
+        raise NotImplementedError
