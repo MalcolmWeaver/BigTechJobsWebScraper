@@ -30,7 +30,7 @@ class BaseJobsSiteScraper:
     def getQueryURL(self, location, offset=0):
         raise NotImplementedError(self)
 
-    def getAllJobs(self, soup, onlyNew=False, last5Jobs=[]) -> list[str]:
+    def getAllJobs(self, startPage, onlyNew=False, last5Jobs=[]) -> list[str]:
         raise NotImplementedError(self)
     def getJobUrl(self, job):
         return f"{self.jobsURLPrefix}{job}"
@@ -39,6 +39,9 @@ class BaseJobsSiteScraper:
         raise NotImplementedError(self)
     
     def getQualifications(self, soup) -> list[str]:
+        raise NotImplementedError(self)
+    
+    def getJobData(self):
         raise NotImplementedError(self)
     
     def jobTitleIsEntryLevel(self, title: str) -> bool:
@@ -60,11 +63,11 @@ class BaseJobsSiteScraper:
         bool: false if any of the qualifications indicate non entry level experience, true otherwise
         """
         # education and experience are not entry level if they contain "n(+) years of experience"
-        pattern1 = re.compile(r'(?:one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2})\s?(?:\+|plus|or more)?\s(?:year|yr)s?', re.IGNORECASE)
+        pattern1 = re.compile(r'(?:one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2})\s?(?:\([\\u002B]|plus|more|or more|\+)?\s(?:year|yr)s?', re.IGNORECASE)
 
         # education and experience are not bachelors level if they mention graduate degrees without also including bachelor's degree"
-        includesGrad = re.compile(r'(?:M\.?S\.?|Ph\.?\s?D\.?|[Mm]aster\'s|[Dd]octorate)')
-
+        includesGrad = re.compile(r'(?:M\.S\.?|Ph\.?\s?D\.?|[Mm]aster([\\u0027]|\')?s|[Dd]octorate)')
+            # MS is not included because it is a common abbreviation (microsoft) and common to end a sentance with.
         includesBachelors = re.compile(r'(BA|BS|Bachelor|BACHELOR)')
 
         for qualification in qualifications:
@@ -101,7 +104,7 @@ class BaseJobsSiteScraper:
             if (idx + 1 ) % 20 == 0:
                 print(f"\nProcessed {idx+1} jobs. Time elapsed: {time.time() - t0}.")
                 print(
-                    f"Percent entry level: {numEntryLevelPositions / (idx+1) * 100}%. "
+                    f"Percent entry level: {numEntryLevelPositions / (idx+1) * 100}% (of {idx} jobs so far). "
                     f"Percent complete: {(idx+1) / len(allJobs) * 100}%. "
                     f"Expected time remaining: "
                     f"{(len(allJobs) - (idx+1)) / (idx + 1) * (time.time() - t0)/60} minutes\n"
@@ -158,3 +161,11 @@ class BaseJobsSiteScraper:
     
     def getJobPrintable(self, job):
         raise NotImplementedError
+    
+class JobsScraperByApi(BaseJobsSiteScraper):
+    def __init__(self):
+        return None
+    
+    searchAPI = ""
+    jobPageAPI = ""
+    

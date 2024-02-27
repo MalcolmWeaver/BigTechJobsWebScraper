@@ -26,7 +26,6 @@ class Amazon(BaseJobsSiteScraper):
         self.location = location
         self.outputFilename = f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt"
         self.jobTitlesCacheFilename = f"{self.__class__.__name__}AllJobUrlsCache-{location}.txt"
-        self.location = location
 
         # put after jobsURLPrefix to get data from API
         self.apiCallPreface = "search.json?"
@@ -90,10 +89,6 @@ class Amazon(BaseJobsSiteScraper):
     
     def getAndCheckAllJobUrls(self, onlyNew=False, last5Jobs=[]):
         """
-        Retrieve all job URLs from the specified number of pages (all of them).
-
-        Returns:
-        list: A list of all the job URLs found for the query.
         """
         t0 = time.time()
         allJobUrls = []
