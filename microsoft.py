@@ -17,8 +17,8 @@ class Microsoft(JobsScraperByApi):
     }
 
     def __init__(self, location="Seattle"):
+        super().__init__()
         self.outputFilename = f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt"
-        self.jobTitlesCacheFilename = f"{self.__class__.__name__}AllJobUrlsCache-{location}.txt"
         self.location = location
         self.locationSeg = self.locations[self.location]
         self.pageNum = 1
@@ -37,13 +37,13 @@ class Microsoft(JobsScraperByApi):
 
     def getJobUrl(self, job: int) -> str:
         return f"https://gcsservices.careers.microsoft.com/search/api/v1/job/{job}?lang=en_us"
-    
+
     def getAllJobs(self, startPage, onlyNew=False, last5Jobs=[]) -> list[str]:
         """
         Given the url to the first search page, get all the job ids
         """
         t0 = time.time()
-        try: 
+        try:
             result = requests.get(self.jobsQueryURL)
         except:
             print(f"Could not get page for {self.jobsQueryURL}")
@@ -58,7 +58,7 @@ class Microsoft(JobsScraperByApi):
         for pageIdx in range(1, nPages + 1):
             currentPage = self.getJobSearchPage(self.locationSeg, pageIdx)
             # print("\nCurrent page: " + currentPage)
-            try: 
+            try:
                 currentResult = requests.get(currentPage)
             except:
                 print(f"Could not get page for {self.jobsQueryURL}")
@@ -78,10 +78,10 @@ class Microsoft(JobsScraperByApi):
         print(f"Time elapsed to get all job IDs: {time.time() - t0}")
 
         return allJobs
-        
+
     def getEntryLevelPositions(self, onlyNew=False, isCached=False):
         """
-        
+
         """
         allJobUrls = []
         if isCached or onlyNew:
@@ -97,7 +97,7 @@ class Microsoft(JobsScraperByApi):
             except:
                 print(f"Could not read cached file {self.jobTitlesCacheFilename}. Going to read from website")
                 isCached = False
-        
+
         if not isCached:
             if onlyNew:
                 # get number of pages until you hit a repeat of the last 5 jobs (should have already collected)
@@ -106,7 +106,7 @@ class Microsoft(JobsScraperByApi):
                     print("No new jobs found")
                     return
                 allJobUrls = newJobUrls
-                
+
 
             else :
                 # get number of pages for naive iteration
@@ -125,7 +125,7 @@ class Microsoft(JobsScraperByApi):
 
     def getJobTitle(self, jobData) -> str:
         return jobData["title"]
-    
+
     def getQualifications(self, jobData) -> str:
         return [jobData["qualifications"]]
 

@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import re
-from utils import BaseJobsSiteScraper
+from scraper_integrations.base_scraper import BaseJobsSiteScraper
 
 def getNumberOfPages(queryUrl) -> int:
     try:
@@ -22,9 +22,9 @@ def getNumberOfPages(queryUrl) -> int:
 
 class Amazon(BaseJobsSiteScraper):
     def __init__(self, location="Seattle"):
-        super().__init__()
         print(f"{self.__class__.__name__} Jobs Scraper")
         self.location = location
+        self.outputFilename = f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt"
 
         # put after jobsURLPrefix to get data from API
         self.apiCallPreface = "search.json?"
@@ -220,5 +220,5 @@ class Amazon(BaseJobsSiteScraper):
         f.close()
 
 if __name__ == "__main__":
-    amazon = Amazon(location="Bay Area")
-    amazon.getEntryLevelPositions(onlyNew=True, isCached=False)
+    amazon = Amazon(location="Austin")
+    amazon.getEntryLevelPositions(onlyNew=False, isCached=False)

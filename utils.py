@@ -1,3 +1,4 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 import time
@@ -5,18 +6,19 @@ import re
 from datetime import datetime
 
 class BaseJobsSiteScraper:
-    def init(self, location="Seattle"):
+    def __init__(self, location):
         print(f"{self.__class__.__name__} Jobs Scraper")
+        # Create both directories if they don't exist
+        os.makedirs("job_outputs", exist_ok=True)
+        os.makedirs("job_caches", exist_ok=True)
         self.location = location
-        self.outputFilename = f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt"
-        self.jobTitlesCacheFilename = f"{self.__class__.__name__}AllJobsCache-{location}.txt"
+        print(f"Location: {self.location}")
+        self.outputFilename = os.path.join("job_outputs", f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt")
+        self.jobTitlesCacheFilename = os.path.join("job_caches", f"{self.__class__.__name__}AllJobsCache-{self.location}.txt")
         self.location = location
         self.jobsQueryURL = self.getQueryURL(location)
         self.jobsQueryURL = f"{self.jobsURLPrefix}/search?base_query=software&{self.locations[self.location]}"
 
-    jobsQueryURL = ""
-    outputFilename = "no-output-filename"
-    jobTitlesCacheFilename = "allJobsCache.txt"
     todayString = datetime.today().strftime('%Y-%m-%d')
     jobsURLPrefix = ""
     locations = {
@@ -24,7 +26,6 @@ class BaseJobsSiteScraper:
         "Austin": "",
         "Bay Area": "",
     }
-    location = "Seattle"
     sortSeg = ""
 
     def getQueryURL(self, location, offset=0):
@@ -34,16 +35,16 @@ class BaseJobsSiteScraper:
         raise NotImplementedError(self)
     def getJobUrl(self, job):
         return f"{self.jobsURLPrefix}{job}"
-    
+
     def getJobTitle(self, soup) -> str:
         raise NotImplementedError(self)
-    
+
     def getQualifications(self, soup) -> list[str]:
         raise NotImplementedError(self)
-    
+
     def getJobData(self):
         raise NotImplementedError(self)
-    
+
     def jobTitleIsEntryLevel(self, title: str) -> bool:
         """
         Check if the title could be for an entry level job.
@@ -54,30 +55,36 @@ class BaseJobsSiteScraper:
         pattern = re.compile(r'[Ss]enior|[Mm]anager|[Ll]ead|[Ss]r|[Mm]ngr')
         isSeniorManagerialOrLead = pattern.search(title)
         return not isSeniorManagerialOrLead
-    
+
     def qualificationsAreEntryLevel(self, qualifications):
         """
         Check if any of the qualifications indicate non entry level experience.
-        
+
         Returns:
         bool: false if any of the qualifications indicate non entry level experience, true otherwise
         """
-        # education and experience are not entry level if they contain "n(+) years of experience"
-        pattern1 = re.compile(r'(?:one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2})\s?(?:\([\\u002B]|plus|more|or more|\+)?\s(?:year|yr)s?', re.IGNORECASE)
+        qualifications_lower = [qualification.lower() for qualification in qualifications]
+
+        # Fixed regex pattern with properly balanced parentheses
+        years_pattern = re.compile(
+            r'(?:(\d+)(?:\s*[-+]?\s*(?:years?|yrs?|y)|(?:[^\w\d]{1,5})(?:years?|yrs?|yr)))'
+            r'|'
+            r'(?:(one|two|three|four|five|six|seven|eight|nine|ten)(?:\+|&#43;)?\s*(?:&nbsp;|\s)*(?:year|yr)s?)'
+        )
 
         # education and experience are not bachelors level if they mention graduate degrees without also including bachelor's degree"
         includesGrad = re.compile(r'(?:M\.S\.?|Ph\.?\s?D\.?|[Mm]aster([\\u0027]|\')?s|[Dd]octorate)')
             # MS is not included because it is a common abbreviation (microsoft) and common to end a sentance with.
         includesBachelors = re.compile(r'(BA|BS|Bachelor|BACHELOR)')
 
-        for qualification in qualifications:
-    
-            if pattern1.search(qualification):
+        for qualification in qualifications_lower:
+
+            if years_pattern.search(qualification):
                 return False
             if includesGrad.search(qualification) and not includesBachelors.search(qualification):
                 return False
         return True
-    
+
     def getEntryLevelPositionsFromList(self, allJobs : list[str], outputFilename="EntryLevelPositions.txt", writeTitle=True, printTimes=True, printResults=True) -> int:
         # TODO: since date parameter
         """
@@ -88,13 +95,21 @@ class BaseJobsSiteScraper:
         int the number of entry level positions found
         """
         t0 = time.time()
+
+
+
+        # Update output path to use the outputs directory
+        if not os.path.dirname(outputFilename):  # If no directory specified in filename
+            output_path = os.path.join("job_outputs", outputFilename)
+        else:
+            output_path = outputFilename
+
         try:
-            f = open(outputFilename, "a+")
+            f = open(output_path, "a+")
             if(writeTitle):
                 f.write(f"\nDate: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         except:
-            print("failed to open file")
-        
+            print(f"failed to open file {output_path}")
 
         numEntryLevelPositions = 0
         for idx, job in enumerate(allJobs):
@@ -123,7 +138,7 @@ class BaseJobsSiteScraper:
             # maybe just reges the url itself?
             title = ""
             try:
-                title = self.getJobTitle(jobData)    
+                title = self.getJobTitle(jobData)
             except:
                 print(f"Could not get TITLE for {jobPrintable}")
 
@@ -136,7 +151,7 @@ class BaseJobsSiteScraper:
             qualifications = []
             try:
                 qualifications = self.getQualifications(jobData)
-                
+
             except:
                 print(f"Could not get QUALIFICATIONS for {jobPrintable}")
             if not self.qualificationsAreEntryLevel(qualifications):
@@ -158,14 +173,14 @@ class BaseJobsSiteScraper:
 
     def getEntryLevelPositions(self, onlyNew=False, isCached=False):
         raise NotImplementedError
-    
+
     def getJobPrintable(self, job):
         raise NotImplementedError
-    
+
 class JobsScraperByApi(BaseJobsSiteScraper):
     def __init__(self):
         return None
-    
+
     searchAPI = ""
     jobPageAPI = ""
-    
+

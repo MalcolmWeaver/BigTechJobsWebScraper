@@ -1,16 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
 import time
-import re
 from utils import BaseJobsSiteScraper
 
 class Apple(BaseJobsSiteScraper):
-    
+
     def __init__(self, location="Seattle"):
-        print("Apple Jobs Scraper")
-        self.location = location
-        self.outputFilename = f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt"
-        self.jobTitlesCacheFilename = f"{self.__class__.__name__}AllJobUrlsCache-{location}.txt"
+        super().__init__(location)
         self.location = location
         self.jobsQueryURL = self.getQueryURL(location)
         self.jobsQueryURL = (
@@ -42,7 +38,7 @@ class Apple(BaseJobsSiteScraper):
 
     sortSeg = "&sort_by=new"
 
-    
+
     # Apple Jobs URL with provided filters
     def getQueryURL(self, location):
         return f"{self.jobsURLPrefix}/en-us/search?{self.locations[self.location]}{self.sortSeg}&&team=devops-and-site-reliability-SFTWR-DSR%20engineering-project-management-SFTWR-EPM%20information-systems-and-technology-SFTWR-ISTECH%20machine-learning-and-ai-SFTWR-MCHLN%20security-and-privacy-SFTWR-SEC%20software-quality-automation-and-tools-SFTWR-SQAT%20wireless-software-SFTWR-WSFT%20analog-and-digital-design-HRDWR-ADD%20engineering-project-management-HRDWR-EPM%20machine-learning-and-ai-HRDWR-MCHLN%20system-design-and-test-engineering-HRDWR-SDE%20wireless-hardware-HRDWR-WT%20machine-learning-infrastructure-MLAI-MLI%20deep-learning-and-reinforcement-learning-MLAI-DLRL%20natural-language-processing-and-speech-technologies-MLAI-NLP%20computer-vision-MLAI-CV%20cloud-and-infrastructure-SFTWR-CLD%20apps-and-frameworks-SFTWR-AF%20core-operating-systems-SFTWR-COS&"
@@ -51,11 +47,11 @@ class Apple(BaseJobsSiteScraper):
     jobsQueryURLPageSuffix = "&page="
 
     def getJobPrintable(self, job):
-        return job
-    
+        return f"https://jobs.apple.com{job}"
+
     def getJobUrl(self, job):
         return f"{self.jobsURLPrefix}{job}"
-    
+
     def getAllJobUrls(self, soup, onlyNew=False, last5Jobs=[]):
         """
         Retrieve all job URLs from the specified number of pages (all of them).
@@ -83,7 +79,7 @@ class Apple(BaseJobsSiteScraper):
             #TODO: test page number too high
 
             soup = BeautifulSoup(page.content, "html.parser")
-            
+
             # Pagination checking
             pageNumber = getCurrentPageNumber(soup)
             assert pageNumber == pageIdx, "Page number does not match pagination index"
@@ -94,7 +90,7 @@ class Apple(BaseJobsSiteScraper):
                     if job in last5Jobs:
                         allJobUrls += newJobUrlsFromQuery[:idx]
                         return allJobUrls
-                        
+
 
             allJobUrls += newJobUrlsFromQuery
 
@@ -124,7 +120,7 @@ class Apple(BaseJobsSiteScraper):
     def getQualifications(self, soup):
         """
         Extracts the qualifications from the given soup object (job description page).
-        
+
         Returns:
         List of strings, the qualifications (bullet points) extracted from the soup object.
         """
@@ -142,7 +138,7 @@ class Apple(BaseJobsSiteScraper):
 
         qualifications = []
         keyQualificationsDiv = soup.find(id="jd-key-qualifications")
-        if keyQualificationsDiv != None:  
+        if keyQualificationsDiv != None:
             keyQualificationsUl = keyQualificationsDiv.ul
             assert keyQualificationsUl != None, "Key Qualifications Does not contain ul"
             liQualifications = keyQualificationsUl.contents
@@ -151,7 +147,7 @@ class Apple(BaseJobsSiteScraper):
         # print("qualifications are: ", qualifications)
 
         # the format of additional requirements is as follows:
-            
+
         # <div id="jd-additional-requirements">
         #   <ul>
         #     <li>additional requirement bullet point</li>
@@ -159,6 +155,15 @@ class Apple(BaseJobsSiteScraper):
         #     ...
         #   </ul>
         # </div>
+
+        # extract min requirements
+        minReqs = []
+        minRequirements = soup.find(id="jd-minimum-qualifications")
+        if minRequirements != None:
+            minReqsUl = minRequirements.ul
+            assert minReqsUl != None, "Key Qualifications Does not contain ul"
+            liMinReqs = minReqsUl.contents
+            minReqs = [li.text for li in liMinReqs]
 
         # extract the additional requirements
         addReqs = []
@@ -170,9 +175,9 @@ class Apple(BaseJobsSiteScraper):
             addReqs = [li.text for li in liAddReqs]
 
         # print("addReqs are: ", addReqs)
-        
+
         # the format of education and experience is as follows:
-            
+
         # <div id="jd-education-experience">
         #   <span>education and experience</span>
         # </div>
@@ -182,8 +187,8 @@ class Apple(BaseJobsSiteScraper):
         educationAndExperience = soup.find(id="jd-education-experience")
         if(educationAndExperience):
             if(educationAndExperience.span != None):
-                educationAndExperienceText = educationAndExperience.span.text  
-        
+                educationAndExperienceText = educationAndExperience.span.text
+
         # print("educationAndExperienceText is: ", educationAndExperienceText)
 
         descriptionText = ""
@@ -193,14 +198,15 @@ class Apple(BaseJobsSiteScraper):
                 descriptionText = description.span.text
 
         # print("descriptionText is: ", descriptionText)
- 
+
         allReqs.append(educationAndExperienceText)
         allReqs.append(descriptionText)
         allReqs += qualifications
         allReqs += addReqs
+        allReqs += minReqs
 
         return allReqs
-    
+
     def getJobData(self, job):
         jobUrl = self.getJobUrl(job)
         print("Job URL:", jobUrl)
@@ -213,7 +219,7 @@ class Apple(BaseJobsSiteScraper):
             print(f"Could not get page for {jobUrl}")
             return None
         return BeautifulSoup(page.content, "html.parser")
-    
+
     def getEntryLevelPositions(self, onlyNew=False, isCached=False):
         """
         Retrieve all job URLs from the specified number of pages (all of them).
@@ -222,7 +228,7 @@ class Apple(BaseJobsSiteScraper):
         """
         Get the soup for the (first) page of query results.
         Get the number of pages for pagination.
-        Optionally get all the job URLs from all pages and cache to a file, 
+        Optionally get all the job URLs from all pages and cache to a file,
         or read from cached file.
         """
 
@@ -253,9 +259,9 @@ class Apple(BaseJobsSiteScraper):
             except:
                 print(f"Could not read cached file {self.jobTitlesCacheFilename}. Going to read from website")
                 isCached = False
-        
+
         if not isCached:
-            
+
             if onlyNew:
                 # get number of pages until you hit a repeat of the last 5 jobs (should have already collected)
                 newJobUrls = self.getAllJobUrls(soup, onlyNew=onlyNew, last5Jobs=allJobUrls[:5])
@@ -279,7 +285,7 @@ class Apple(BaseJobsSiteScraper):
 def getNumberOfPages(soup):
     """
     Funtion to get number of pages to loop through for naive pagination by reading html (see element with id="frmPagination")
-    
+
     Returns: (int) the number of pages of the job query results according to the website
     """
     pageNumberElements = soup.find_all(class_="pageNumber")
@@ -306,11 +312,15 @@ def getJobUrlsFromJobsQueriedPage(soup):
 
     # get the link to each job posting from the job query
     jobUrls = [jobElement["href"] for jobElement in jobElements]
-    return jobUrls  
+    return jobUrls
 
 if __name__ == "__main__":
-    apple = Apple()
-    onlyNew = True
+    location = input("Enter location (Seattle, Austin, Bay Area): ")
+    if location not in ["Seattle", "Austin", "Bay Area"]:
+        print("Invalid location. Please enter a valid location.")
+        exit()
+    apple = Apple(location=location)
+    onlyNew = False
     apple.getEntryLevelPositions(onlyNew=True, isCached=False)
 
  # Testing Data
