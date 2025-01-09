@@ -3,3 +3,6 @@ beatifulsoup/
 
 oldTextFiles/
 __pycache__/
+
+job_outputs/
+job_caches/
