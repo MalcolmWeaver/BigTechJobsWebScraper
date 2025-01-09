@@ -3,6 +3,7 @@ beatifulsoup/
 
 oldTextFiles/
 __pycache__/
+.vscode/
 
 job_outputs/
 job_caches/
