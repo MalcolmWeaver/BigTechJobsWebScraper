@@ -7,10 +7,8 @@ from datetime import datetime
 
 class BaseJobsSiteScraper:
     def __init__(self, location):
+        super().__init__()
         print(f"{self.__class__.__name__} Jobs Scraper")
-        # Create both directories if they don't exist
-        os.makedirs("job_outputs", exist_ok=True)
-        os.makedirs("job_caches", exist_ok=True)
         self.location = location
         print(f"Location: {self.location}")
         self.outputFilename = os.path.join("job_outputs", f"{self.__class__.__name__}EntryLevelPositions{self.todayString}-{self.location}.txt")
@@ -33,6 +31,7 @@ class BaseJobsSiteScraper:
 
     def getAllJobs(self, startPage, onlyNew=False, last5Jobs=[]) -> list[str]:
         raise NotImplementedError(self)
+
     def getJobUrl(self, job):
         return f"{self.jobsURLPrefix}{job}"
 
