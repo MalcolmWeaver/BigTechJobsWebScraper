@@ -183,5 +183,5 @@ if __name__ == "__main__":
     # print(f"Found {len(jobs)} jobs")
     # for job in jobs:
     #     print(job)
-    job = JobPosting(company='Meta', title='Software Engineer, Product', location=None, locations=['Sunnyvale, CA', 'Remote, US', 'Bellevue, WA', 'Redmond, WA', 'Menlo Park, CA', 'Seattle, WA', 'Burlingame, CA', 'Washington, DC', 'New York, NY', 'San Francisco, CA', 'Fremont, CA'], id='624841835890795', posting_url=None, posted_date=None, description=None, requirements=None, salary_range=None, team=None, teams=['Software Engineering'], level=None)
+    job = JobPosting(company='Meta', id='3414246448833665', title="test")
     print(scraper.get_job_with_details(job))

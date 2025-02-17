@@ -98,7 +98,6 @@ class JobsDatabase:
 
     def store_job(self, job: JobPosting, company_name: CompanyScrapers):
         """Store a single job in the database. If job exists, it will be replaced."""
-
         import json
 
         with sqlite3.connect(self.db_path) as conn:
@@ -111,7 +110,7 @@ class JobsDatabase:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 job.id,
-                job.company,
+                company_name.value,
                 job.title,
                 job.location,
                 json.dumps(job.locations) if job.locations else None,
