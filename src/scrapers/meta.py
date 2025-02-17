@@ -147,12 +147,14 @@ class MetaScraper(BaseScraper):
                 'description': data.get('description'),
                 'responsibilities': data.get('responsibilities', '').split(';') if data.get('responsibilities') else None,
                 'requirements': data.get('qualifications', '').split(';') if data.get('qualifications') else None,
-                'preferred_qualifications': [qual for key, value in data.items() if 'qualification' in key.lower() and key.lower() != 'qualifications' and value for qual in value.split(';')],
+                'all_qualifications_including_preferred': [qual for key, val in data.items() if 'qualification' in key.lower() and val for qual in val.split(';')] if any('qualification' in key.lower() for key in data.keys()) else None,
                 'posted_date': datetime.fromisoformat(data['datePosted']) if data.get('datePosted') else None,
                 'company': 'Meta',
                 'id': data.get('id'),
                 'posting_url': data.get('url')
             }
+
+
 
             # Merge with existing job's data, preferring new data when available
             existing_data = {k: v for k, v in existing_job.__dict__.items() if v is not None}
@@ -181,5 +183,5 @@ if __name__ == "__main__":
     # print(f"Found {len(jobs)} jobs")
     # for job in jobs:
     #     print(job)
-    job = JobPosting(company='Meta', title='Software Engineer, Product', location=None, locations=['Sunnyvale, CA', 'Remote, US', 'Bellevue, WA', 'Redmond, WA', 'Menlo Park, CA', 'Seattle, WA', 'Burlingame, CA', 'Washington, DC', 'New York, NY', 'San Francisco, CA', 'Fremont, CA'], id='750778856583126', posting_url=None, posted_date=None, description=None, requirements=None, salary_range=None, team=None, teams=['Software Engineering'], level=None)
+    job = JobPosting(company='Meta', title='Software Engineer, Product', location=None, locations=['Sunnyvale, CA', 'Remote, US', 'Bellevue, WA', 'Redmond, WA', 'Menlo Park, CA', 'Seattle, WA', 'Burlingame, CA', 'Washington, DC', 'New York, NY', 'San Francisco, CA', 'Fremont, CA'], id='624841835890795', posting_url=None, posted_date=None, description=None, requirements=None, salary_range=None, team=None, teams=['Software Engineering'], level=None)
     print(scraper.get_job_with_details(job))

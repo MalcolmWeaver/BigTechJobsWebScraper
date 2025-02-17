@@ -18,4 +18,4 @@ class JobPosting:
   teams: Optional[List[str]] = None
   level: Optional[str] = None
   responsibilities: Optional[List[str]] = None
-  preferred_qualifications: Optional[List[str]] = None
+  all_qualifications_including_preferred: Optional[List[str]] = None

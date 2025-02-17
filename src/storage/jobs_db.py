@@ -32,7 +32,7 @@ class JobsDatabase:
                     teams TEXT, /* Stored as JSON array */
                     level TEXT,
                     responsibilities TEXT, /* Stored as JSON array */
-                    preferred_qualifications TEXT, /* Stored as JSON array */
+                    all_qualifications_including_preferred TEXT, /* Stored as JSON array */
                     scraped_at TIMESTAMP,
                     PRIMARY KEY (id, company)
                 )
@@ -72,7 +72,7 @@ class JobsDatabase:
                 teams = ?,
                 level = ?,
                 responsibilities = ?,
-                preferred_qualifications = ?,
+                all_qualifications_including_preferred = ?,
                 scraped_at = ?
                 WHERE id = ? AND company = ?
             """, (
@@ -88,7 +88,7 @@ class JobsDatabase:
                 json.dumps(job.teams) if job.teams else None,
                 job.level,
                 json.dumps(job.responsibilities) if job.responsibilities else None,
-                json.dumps(job.preferred_qualifications) if job.preferred_qualifications else None,
+                json.dumps(job.all_qualifications_including_preferred) if job.all_qualifications_including_preferred else None,
                 datetime.now(),
                 job.id,
                 job.company
@@ -107,7 +107,7 @@ class JobsDatabase:
                 INSERT OR REPLACE INTO jobs
                 (id, company, title, location, locations, posting_url, posted_date,
                 description, requirements, salary_range, team, teams, level,
-                responsibilities, preferred_qualifications, scraped_at)
+                responsibilities, all_qualifications_including_preferred, scraped_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 job.id,
@@ -124,7 +124,7 @@ class JobsDatabase:
                 json.dumps(job.teams) if job.teams else None,
                 job.level,
                 json.dumps(job.responsibilities) if job.responsibilities else None,
-                json.dumps(job.preferred_qualifications) if job.preferred_qualifications else None,
+                json.dumps(job.all_qualifications_including_preferred) if job.all_qualifications_including_preferred else None,
                 datetime.now()
             ))
             conn.commit()
@@ -171,5 +171,5 @@ class JobsDatabase:
                 teams=json.loads(row[11]) if row[11] else None,
                 level=row[12],
                 responsibilities=json.loads(row[13]) if row[13] else None,
-                preferred_qualifications=json.loads(row[14]) if row[14] else None
+                all_qualifications_including_preferred=json.loads(row[14]) if row[14] else None
             ) for row in rows]
