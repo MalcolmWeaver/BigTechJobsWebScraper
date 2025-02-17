@@ -147,7 +147,7 @@ class MetaScraper(BaseScraper):
                 'description': data.get('description'),
                 'responsibilities': data.get('responsibilities', '').split(';') if data.get('responsibilities') else None,
                 'requirements': data.get('qualifications', '').split(';') if data.get('qualifications') else None,
-                'all_qualifications_including_preferred': [qual for key, val in data.items() if 'qualification' in key.lower() and val for qual in val.split(';')] if any('qualification' in key.lower() for key in data.keys()) else None,
+                'extra_qualifications': [qual for key, val in data.items() if 'qualification' in key.lower() and val for qual in val.split(';')] if any('qualification' in key.lower() for key in data.keys()) else None,
                 'posted_date': datetime.fromisoformat(data['datePosted']) if data.get('datePosted') else None,
                 'company': 'Meta',
                 'id': data.get('id'),
