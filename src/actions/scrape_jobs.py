@@ -1,12 +1,13 @@
 from enum import Enum
 import time
-from typing import List, Dict, Type
+from typing import List, Dict, Type, Optional
 from src.models.job import JobPosting
 from src.storage.jobs_db import JobsDatabase
 from src.scrapers.meta import MetaScraper
 from src.models.company import CompanyScrapers
 import re
-
+import requests
+from src.models.resume import Resume
 # Define a mapping of company names to scraper classes
 COMPANY_SCRAPER_MAP: Dict[CompanyScrapers, Type] = {
     CompanyScrapers.META: MetaScraper,
@@ -50,7 +51,7 @@ def scrape_jobs_for_company(
 
     return processed_jobs
 
-def filter_jobs_by_qualifications(jobs: List[JobPosting]) -> List[JobPosting]:
+def filter_jobs_by_qualifications_text_based(jobs: List[JobPosting]) -> List[JobPosting]:
     """
     Filter jobs to only include entry-level positions based on qualifications.
 
@@ -117,27 +118,102 @@ def filter_jobs_by_qualifications(jobs: List[JobPosting]) -> List[JobPosting]:
 
     # return [job for job in jobs if is_entry_level(job)]
     return [job for job in jobs if is_entry_level(job, strict=True)]
-    # Get both strict and non-strict filtered jobs
-    # strict_filtered = [job for job in jobs if is_entry_level(job, strict=True)]
-    # non_strict_filtered = [job for job in jobs if is_entry_level(job, strict=False)]
-
-    # # Find jobs that are in non-strict but not in strict filtering
-    # difference = [job for job in non_strict_filtered if job not in strict_filtered]
-
-    return difference
 
 
+def filter_jobs_by_qualifications_ai_based(jobs: List[JobPosting], resume_text: Optional[str] = None) -> List[JobPosting]:
+    """
+    OLLAMA must be running locally to use this function.
+    To run OLLAMA, run the following command:
+    ollama run mistral
+
+    kill with
+    lsof -i :11434
+    or
+    pkill ollama
+
+    Filter jobs using a local LLM via Ollama to determine if they're entry-level and a good match for the provided resume.
+
+    Args:
+        jobs: List of JobPosting objects to filter
+        resume_text: Optional text content of the user's resume
+
+    Returns:
+        List[JobPosting]: Filtered list containing suitable positions
+    """
+    if not resume_text:
+        return []
+
+    OLLAMA_ENDPOINT = "http://localhost:11434/api/generate"
+    db = JobsDatabase()
+    matching_jobs = []
+
+    for job in jobs:
+        # Combine job details into a comprehensive description
+        job_description = f"""
+        Title: {job.title}
+        Requirements: {' '.join(job.requirements)}
+        Qualifications: {' '.join(job.extra_qualifications)}
+        """
+
+        # Construct the prompt for the LLM
+        prompt = f"""
+        Task: Analyze if the following job posting is suitable for an entry-level candidate
+        and a good match for the candidate's resume. Consider:
+        1. Does the candidate's resume match the core requirements?
+        2. Would this be a realistic application for this candidate?
+        3. Special emphasis that this does not require a graduate degree.
+
+        Job Details:
+        {job_description}
+
+        Qualifications:
+        {job.extra_qualifications}
+
+        Candidate's Resume:
+        {resume_text}
+
+        Make sure your answer includes "YES" if this is a good match for an entry-level candidate with this resume,
+        and "NO" if it's not suitable. Limit yourself to 3 lines of text. Must be under 200 characters.
+        """
+
+        try:
+            response = requests.post(
+                OLLAMA_ENDPOINT,
+                json={
+                    "model": "mistral",
+                    "prompt": prompt,
+                    "stream": False
+                }
+            )
+            if response.status_code == 200:
+                result = response.json()
+                answer = result['response'].strip()
+                print(f"OLLAMA RESPONSE FOR JOB {job.id}: {answer}")
+                is_match = "YES" in answer.upper()
+                # Update the database immediately for each job
+                db.update_job_ai_match(CompanyScrapers(job.company), job.id, is_match, answer)
+                if is_match:
+                    matching_jobs.append(job)
+
+        except Exception as e:
+            print(f"Error processing job {job.id}: {str(e)}")
+            continue
+
+    return matching_jobs
 
 def store_filtered_jobs_for_company(company_name: CompanyScrapers):
     db = JobsDatabase()
-    jobs = db.get_jobs(company_name) # TODO: filter by company name (currently meta is Meta not META)
-    filtered_jobs = filter_jobs_by_qualifications(jobs)
-    # print(f"filtered_jobs: {[f"https://www.metacareers.com/jobs/{job.id}" for job in filtered_jobs]}")
-    for job in filtered_jobs:
+    jobs = db.get_jobs(company_name)
+    filtered_jobs_text = filter_jobs_by_qualifications_text_based(jobs)
+    for job in filtered_jobs_text:
         print(f"Filtered in: {job.title}, https://www.metacareers.com/jobs/{job.id}")
-    # db = JobsDatabase()
-    # db.store_jobs(filtered_jobs, company_name)
+    # Update text_match status in database
+    db.update_text_matches(company_name, [job.id for job in filtered_jobs_text])
+
+    print("\n\n AI FILTERED JOBS \n\n this may take a while to run ...")
+    filter_jobs_by_qualifications_ai_based(filtered_jobs_text, Resume().resume_text)
+    print(f"Found {len(filtered_jobs_text)} matching jobs out of {len(jobs)} total jobs")
 
 if __name__ == "__main__":
-    # scrape_jobs_for_company(CompanyScrapers.META)
+    scrape_jobs_for_company(CompanyScrapers.META, force_refresh=False)
     store_filtered_jobs_for_company(CompanyScrapers.META)

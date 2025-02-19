@@ -19,3 +19,6 @@ class JobPosting:
   level: Optional[str] = None
   responsibilities: Optional[List[str]] = None
   extra_qualifications: Optional[List[str]] = None
+  text_match: Optional[str] = None
+  ai_match: Optional[List[str]] = None
+  applied_on: Optional[datetime] = None

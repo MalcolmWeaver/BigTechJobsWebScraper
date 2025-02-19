@@ -100,6 +100,7 @@ class MetaScraper(BaseScraper):
           for job_data in raw_jobs:
               filtered_data = {k: v for k, v in job_data.items() if k in job_model_fields}
               filtered_data["company"] = "Meta"
+              filtered_data["posting_url"] = f"https://www.metacareers.com/jobs/{job_data['id']}"
               jobs.append(JobPosting(**filtered_data))
           return jobs
       except Exception as e:
@@ -162,7 +163,7 @@ class MetaScraper(BaseScraper):
 
             return JobPosting(**merged_data)
         else:
-          print("Data script tag found")
+          print("Data script tag not found")
           return None
 
     def is_overqualified(self, job: JobPosting, years_experience: int, skills: List[str]) -> bool:
@@ -183,5 +184,5 @@ if __name__ == "__main__":
     # print(f"Found {len(jobs)} jobs")
     # for job in jobs:
     #     print(job)
-    job = JobPosting(company='Meta', id='3414246448833665', title="test")
+    job = JobPosting(company='Meta', id='936067258115050', title="test")
     print(scraper.get_job_with_details(job))

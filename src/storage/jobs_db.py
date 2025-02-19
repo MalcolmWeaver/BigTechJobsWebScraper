@@ -34,6 +34,10 @@ class JobsDatabase:
                     responsibilities TEXT, /* Stored as JSON array */
                     extra_qualifications TEXT, /* Stored as JSON array */
                     scraped_at TIMESTAMP,
+                    text_match BOOLEAN DEFAULT FALSE,
+                    ai_match BOOLEAN DEFAULT FALSE,
+                    ai_match_reason TEXT,
+                    applied_on TIMESTAMP,
                     PRIMARY KEY (id, company)
                 )
             """)
@@ -73,7 +77,11 @@ class JobsDatabase:
                 level = ?,
                 responsibilities = ?,
                 extra_qualifications = ?,
-                scraped_at = ?
+                scraped_at = ?,
+                text_match = ?,
+                ai_match = ?,
+                ai_match_reason = ?,
+                applied_on = ?
                 WHERE id = ? AND company = ?
             """, (
                 job.title,
@@ -82,7 +90,7 @@ class JobsDatabase:
                 job.posting_url,
                 job.posted_date.isoformat() if job.posted_date else None,
                 job.description,
-                json.dumps(job.requirements) if job.requirements else None,
+                job.requirements,
                 job.salary_range,
                 job.team,
                 json.dumps(job.teams) if job.teams else None,
@@ -90,6 +98,10 @@ class JobsDatabase:
                 json.dumps(job.responsibilities) if job.responsibilities else None,
                 json.dumps(job.extra_qualifications) if job.extra_qualifications else None,
                 datetime.now(),
+                job.text_match if hasattr(job, 'text_match') else False,
+                job.ai_match if hasattr(job, 'ai_match') else False,
+                job.ai_match_reason if hasattr(job, 'ai_match_reason') else None,
+                job.applied_on.isoformat() if hasattr(job, 'applied_on') and job.applied_on else None,
                 job.id,
                 job.company
             ))
@@ -106,8 +118,9 @@ class JobsDatabase:
                 INSERT OR REPLACE INTO jobs
                 (id, company, title, location, locations, posting_url, posted_date,
                 description, requirements, salary_range, team, teams, level,
-                responsibilities, extra_qualifications, scraped_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                responsibilities, extra_qualifications, scraped_at, text_match,
+                ai_match, ai_match_reason, applied_on)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 job.id,
                 company_name.value,
@@ -124,7 +137,11 @@ class JobsDatabase:
                 job.level,
                 json.dumps(job.responsibilities) if job.responsibilities else None,
                 json.dumps(job.extra_qualifications) if job.extra_qualifications else None,
-                datetime.now()
+                datetime.now(),
+                job.text_match if hasattr(job, 'text_match') else False,
+                job.ai_match if hasattr(job, 'ai_match') else False,
+                job.ai_match_reason if hasattr(job, 'ai_match_reason') else None,
+                job.applied_on.isoformat() if hasattr(job, 'applied_on') and job.applied_on else None
             ))
             conn.commit()
 
@@ -170,5 +187,43 @@ class JobsDatabase:
                 teams=json.loads(row[11]) if row[11] else None,
                 level=row[12],
                 responsibilities=json.loads(row[13]) if row[13] else None,
-                extra_qualifications=json.loads(row[14]) if row[14] else None
+                extra_qualifications=json.loads(row[14]) if row[14] else None,
+                text_match=bool(row[16]),
+                ai_match=bool(row[17]),
+                ai_match_reason=row[18],
+                applied_on=datetime.fromisoformat(row[19]) if row[19] else None
             ) for row in rows]
+
+    def update_text_matches(self, company_name: CompanyScrapers, matched_job_ids: List[str]):
+        """Update text_match field for all jobs of a company, setting it True only for specified job IDs"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # First, set all jobs for this company to text_match = False
+            cursor.execute("""
+                UPDATE jobs
+                SET text_match = FALSE
+                WHERE company = ?
+            """, (company_name.value,))
+
+            if matched_job_ids:  # Only run second query if we have matches
+                # Then set text_match = True for filtered jobs
+                cursor.execute("""
+                    UPDATE jobs
+                    SET text_match = TRUE
+                    WHERE company = ?
+                    AND id IN ({})
+                """.format(','.join('?' * len(matched_job_ids))),
+                (company_name.value, *matched_job_ids))
+            conn.commit()
+
+    def update_job_ai_match(self, company_name: CompanyScrapers, job_id: str, is_match: bool, match_reason: str):
+        """Update AI match status and reason for a single job"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE jobs
+                SET ai_match = ?,
+                    ai_match_reason = ?
+                WHERE company = ? AND id = ?
+            """, (is_match, match_reason, company_name.value, job_id))
+            conn.commit()
