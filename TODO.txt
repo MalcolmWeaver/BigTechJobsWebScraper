@@ -8,6 +8,7 @@ Feb 17, 2025
 - Resume object. DONE
 
 Feb 19, 2025
+- add description field to job (meta)
 - Microsoft,
 - Google
 - Apple

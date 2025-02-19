@@ -159,9 +159,9 @@ def filter_jobs_by_qualifications_ai_based(jobs: List[JobPosting], resume_text: 
         prompt = f"""
         Task: Analyze if the following job posting is suitable for an entry-level candidate
         and a good match for the candidate's resume. Consider:
-        1. Does the candidate's resume match the core requirements?
-        2. Would this be a realistic application for this candidate?
-        3. Special emphasis that this does not expect a graduate degree.
+        1. Would this be a realistic application for this candidate?
+        2. Special emphasis that this does not expect a graduate degree.
+        3. brief evaluation of the chances of being the most competitive candidate for this job.
 
         Job Details:
         {job_description}
