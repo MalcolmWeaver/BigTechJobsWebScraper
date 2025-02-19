@@ -6,12 +6,14 @@ Feb 17, 2025
 
 - llm API call for would I be a good fit. DONE
 - Resume object. DONE
+
+Feb 19, 2025
 - Microsoft,
 - Google
 - Apple
 - nvidia
 
-Feb 18, 2025
+Feb 20, 2025
 
 - amazon (no tor)
 - tesla (no tor)
@@ -19,7 +21,7 @@ Feb 18, 2025
 - look into scraping job boards
 - merge int main
 
-Feb 19, 2025
+Feb 21, 2025
 
 - logging
 - deploy remotely?

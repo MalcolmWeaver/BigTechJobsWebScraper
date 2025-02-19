@@ -8,9 +8,7 @@ import json
 
 class MetaScraper(BaseScraper):
     def __init__(self):
-        self.base_url = "https://careers.meta.com/api/"
         self.http_client = HttpClient()
-        # ... any auth or session setup
 
     def get_job_listings(self, attempt: int = 0) -> List[JobPosting]:
         """
