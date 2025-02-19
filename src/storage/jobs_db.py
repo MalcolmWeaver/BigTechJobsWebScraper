@@ -227,3 +227,4 @@ class JobsDatabase:
                 WHERE company = ? AND id = ?
             """, (is_match, match_reason, company_name.value, job_id))
             conn.commit()
+        print(f"Updated AI match for job {job_id} of company {company_name.value}: {is_match}")

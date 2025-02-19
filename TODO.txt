@@ -2,10 +2,10 @@ Feb 17, 2025
 
 - Db fields for
   qualifications met,
-  applied on,
+  applied on, DONE
 
-- llm API call for would I be a good fit.
-- Resume object.
+- llm API call for would I be a good fit. DONE
+- Resume object. DONE
 - Microsoft,
 - Google
 - Apple

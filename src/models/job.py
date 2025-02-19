@@ -21,4 +21,5 @@ class JobPosting:
   extra_qualifications: Optional[List[str]] = None
   text_match: Optional[str] = None
   ai_match: Optional[List[str]] = None
+  ai_match_reason: Optional[str] = None
   applied_on: Optional[datetime] = None

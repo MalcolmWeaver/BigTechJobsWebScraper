@@ -161,7 +161,7 @@ def filter_jobs_by_qualifications_ai_based(jobs: List[JobPosting], resume_text: 
         and a good match for the candidate's resume. Consider:
         1. Does the candidate's resume match the core requirements?
         2. Would this be a realistic application for this candidate?
-        3. Special emphasis that this does not require a graduate degree.
+        3. Special emphasis that this does not expect a graduate degree.
 
         Job Details:
         {job_description}
@@ -215,5 +215,7 @@ def store_filtered_jobs_for_company(company_name: CompanyScrapers):
     print(f"Found {len(filtered_jobs_text)} matching jobs out of {len(jobs)} total jobs")
 
 if __name__ == "__main__":
-    scrape_jobs_for_company(CompanyScrapers.META, force_refresh=False)
-    store_filtered_jobs_for_company(CompanyScrapers.META)
+    company_name = input("Company name: ")
+    company = CompanyScrapers(company_name.lower())
+    scrape_jobs_for_company(company, force_refresh=False)
+    store_filtered_jobs_for_company(company)
