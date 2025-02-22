@@ -199,7 +199,7 @@ def filter_jobs_by_qualifications_ai_based(
         prompt = f"""
         Task: Analyze if the following job posting is suitable for an entry-level candidate
         and a good match for the candidate's resume. Consider:
-        1. Do you think he has a good chance of being the most competitive candidate for this job?
+        1. Do you think he has a good chance of being the most competitive candidate for this job? Remember that meta is a very competitive company.
         2. Special emphasis that this does not expect a graduate degree and the work is computer programming.
 
         Job Details:
