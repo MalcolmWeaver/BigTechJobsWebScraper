@@ -1,0 +1,30 @@
+Feb 17, 2025
+
+- Db fields for
+  qualifications met,
+  applied on, DONE
+
+- llm API call for would I be a good fit. DONE
+- Resume object. DONE
+
+Feb 19, 2025
+- add description field to job (meta)
+- Microsoft,
+- Google
+- Apple
+- nvidia
+
+Feb 20, 2025
+
+- amazon (no tor)
+- tesla (no tor)
+- research other companies to do
+- look into scraping job boards
+- merge int main
+
+Feb 21, 2025
+
+- logging
+- deploy remotely?
+- testing?
+- cicd
