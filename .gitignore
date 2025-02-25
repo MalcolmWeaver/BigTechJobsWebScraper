@@ -9,3 +9,4 @@ job_outputs/
 job_caches/
 
 data/
+data/*.db
