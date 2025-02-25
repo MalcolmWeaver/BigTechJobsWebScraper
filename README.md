@@ -32,6 +32,53 @@ An automated system for scraping and filtering software engineering job postings
 - Tor (optional, for anonymous scraping)
 - Ollama (for AI-powered matching)
 
-## Installation
+## Ollama Setup
 
-1. Clone the repository:
+1. Install Ollama:
+   - **Mac/Linux**:
+     ```bash
+     curl -fsSL https://ollama.com/install.sh | sh
+     ```
+   - **Windows**:
+     - Download and install from [Ollama.com](https://ollama.com)
+
+2. Start the Ollama service:
+   ```bash
+   ollama serve
+   ```
+
+3. In a new terminal, pull and run the model:
+   ```bash
+   # Pull the model (only needed once)
+   ollama pull mistral
+
+   # Test the model
+   ollama run mistral "Hello, how are you?"
+   ```
+
+4. For development, you can interact with Ollama via HTTP:
+   ```bash
+   curl http://localhost:11434/api/generate -d '{
+     "model": "mistral",
+     "prompt": "Why is the sky blue?"
+   }'
+   ```
+
+### Troubleshooting
+
+- **Port in Use**: If port 11434 is already in use, check for existing Ollama processes:
+  ```bash
+  ps aux | grep ollama
+  # or
+  lsof -i :11434
+  ```
+
+- **Permission Issues**: On Linux/Mac, you might need to run with sudo:
+  ```bash
+  sudo ollama serve
+  ```
+
+- **Model Download Issues**: If model download fails, try:
+  ```bash
+  ollama pull mistral --insecure
+  ```
