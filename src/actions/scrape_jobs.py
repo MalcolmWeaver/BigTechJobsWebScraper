@@ -2,6 +2,7 @@ from typing import List, Dict, Type, Optional
 from src.models.job import JobPosting
 from src.storage.jobs_db import JobsDatabase
 from src.scrapers.meta import MetaScraper
+from src.scrapers.apple import AppleScraper
 from src.scrapers.microsoft import MicrosoftScraper
 from src.models.company import CompanyScrapers
 import re
@@ -12,6 +13,7 @@ from src.models.resume import Resume
 COMPANY_SCRAPER_MAP: Dict[CompanyScrapers, Type] = {
     CompanyScrapers.META: MetaScraper,
     CompanyScrapers.MICROSOFT: MicrosoftScraper,
+    CompanyScrapers.APPLE: AppleScraper,
     # CompanyScrapers.GOOGLE: GoogleScraper,
     # CompanyScrapers.AMAZON: AmazonScraper,
 }
@@ -36,6 +38,7 @@ def scrape_jobs_for_company(company_name: CompanyScrapers, force_refresh: bool =
         prev_size = len(jobs)
         scraper = get_scraper_for_company(company_name)
         job_listings = scraper.get_job_listings(page=page)
+        print(job_listings)
         jobs.update(job.id for job in job_listings)
         if len(jobs) > prev_size:
             page += 1
@@ -263,6 +266,3 @@ if __name__ == "__main__":
     company = CompanyScrapers(company_name.lower())
     scrape_jobs_for_company(company, force_refresh=False)
     store_filtered_jobs_for_company(company)
-
-    # scrape_jobs_for_company(CompanyScrapers.MICROSOFT, force_refresh=True)
-    # store_filtered_jobs_for_company(CompanyScrapers.MICROSOFT)
