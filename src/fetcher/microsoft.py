@@ -7,6 +7,8 @@ from bs4 import BeautifulSoup
 import json
 
 
+## TODO: Implement SiteFetcher
+
 class MicrosoftScraper(BaseScraper):
     def __init__(self):
         self.http_client = HttpClient()

@@ -1,10 +1,10 @@
-from datetime import datetime
 from typing import List
 from src.scrapers.base_scraper import BaseScraper
 from src.models.job import JobPosting
 from src.scrapers.http_client import HttpClient
 from bs4 import BeautifulSoup
-import json
+
+## TODO: Implement SiteFetcher
 
 
 class AppleScraper(BaseScraper):
@@ -17,7 +17,7 @@ class AppleScraper(BaseScraper):
         """
         url, headers, _ = self.build_get_job_listings_request(page)
         response = self.http_client.request("GET", url, headers=headers)
-        if response.ok:
+        if response and response.ok:
             return self.parse_get_job_listings(response)
         else:
             if attempt < 3 and (
@@ -88,7 +88,7 @@ class AppleScraper(BaseScraper):
         url, headers = self.build_get_job_with_details_request(job)
         response = self.http_client.request("GET", url, headers=headers)
         print(f"made request to {url}")  # TODO: set up logging/monitoring
-        if response.ok:
+        if response and response.ok:
             return self.parse_get_job_with_details(job, response)
         else:
             print(f"Failed to fetch job details: {response.status_code}")

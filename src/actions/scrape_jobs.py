@@ -38,7 +38,6 @@ def scrape_jobs_for_company(company_name: CompanyScrapers, force_refresh: bool =
         prev_size = len(jobs)
         scraper = get_scraper_for_company(company_name)
         job_listings = scraper.get_job_listings(page=page)
-        print(job_listings)
         jobs.update(job.id for job in job_listings)
         if len(jobs) > prev_size:
             page += 1
