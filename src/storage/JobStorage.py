@@ -83,6 +83,9 @@ class JobStorage(JobStorageInterface):
                 if "title" in filters:
                     where_clauses.append("title LIKE ?")
                     params.append(f"%{filters['title']}%")
+                if "description" in filters and filters["description"] == True:
+                    where_clauses.append('description IS NOT NULL and description != ""')
+
                 # Add more filters as needed
 
                 if where_clauses:
@@ -102,13 +105,17 @@ class JobStorage(JobStorageInterface):
             return [row[0] for row in cursor.fetchall()]
 
 
-    def update_job(self, job_id: str, updates: JobPosting):
+    def update_job(self, job_id: str, updates: JobPosting | dict):
         """Update job details in the database"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
 
-            # Convert JobPosting to dict and filter out None values
-            job_dict = self._to_storage_model(updates)
+            if isinstance(updates, JobPosting):
+                # Convert JobPosting to dict and filter out None values
+                job_dict = self._to_storage_model(updates)
+            else:
+                job_dict = updates
+
             job_dict = {k: v for k, v in job_dict.items() if v is not None}
             if not job_dict:
                 return False
