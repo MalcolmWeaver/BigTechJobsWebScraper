@@ -3,7 +3,9 @@ from stem import Signal
 from stem.control import Controller
 import time
 from typing import Optional, Dict, Any
+import structlog
 
+logger = structlog.get_logger()
 
 class HttpClient:
     def __init__(self, use_tor: bool = True):
@@ -81,6 +83,7 @@ class HttpClient:
                 impersonate="chrome120",  # Use curl_cffi's browser impersonation
                 **kwargs,
             )
+            logger.info({"event": "request_made", "url": url, "status_code": response.status_code})
         except Exception as e:
             print(f"Error making request: {e}")
             return None

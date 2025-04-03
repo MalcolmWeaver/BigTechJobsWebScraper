@@ -1,6 +1,6 @@
-from src.fetcher.SiteFetcher import SiteFetcher
+from SiteFetcher import SiteFetcher
 from src.storage.JobStorageInterface import JobStorageInterface
-from src.selector.JobSelector import JobSelector
+from JobSelector import JobSelector
 from src.controller.ProfileCreator import ProfileCreator
 
 
@@ -13,6 +13,7 @@ class JobPipelineController():
 
     def run_pipeline(self, city):
         self.fetcher.fetch_jobs(city)
+        ## RUNS STOPS HERE
         profile = self.profile_creator.create_profile()
         suitable_jobs = self.selector.select_suitable_jobs(profile)
         return suitable_jobs
