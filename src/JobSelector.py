@@ -9,7 +9,7 @@ class JobSelector:
         jobs = self.storage.get_jobs(filters={"description": True})
         suitable_jobs = []
         for job in jobs[:2]:
-            print(f"DEBUG: {job}")
+            print(f"DEBUG: {job["posting_url"]}")
             llm_is_suitable = self.llm_is_suitable(job, user_profile)
             if llm_is_suitable:
                 job["is_match"] = True
@@ -63,7 +63,7 @@ class JobSelector:
                                         'stream': False  # Set to False to get a single response
                                     })
 
-            print(f"DEBUG: RESPONSE: {response.json()}")
+            print(f"DEBUG: RESPONSE: {response.json()['response']}")
             # Parse the response
             if response.status_code == 200:
                 response_data = response.json()
