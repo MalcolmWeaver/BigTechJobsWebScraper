@@ -7,24 +7,35 @@ Feb 17, 2025
 - llm API call for would I be a good fit. DONE
 - Resume object. DONE
 
-Feb 19, 2025
+Feb 25, 2025
+- finish apple
+
+Feb 26, 2025
+- distinguish between qualifications and extra qualifications; strict and not strict filtering
 - add description field to job (meta)
-- Microsoft,
-- Google
-- Apple
+- backfill/implement other important missing fields for various companies (description, requirements, etc)
+
+
+Feb 27, 2025
 - nvidia
 
-Feb 20, 2025
+Feb 28, 2025
+- google?
+- backfill/implement less important missing fields (salary, location, etc)
 
+Mar 1, 2025
 - amazon (no tor)
 - tesla (no tor)
 - research other companies to do
 - look into scraping job boards
 - merge int main
 
-Feb 21, 2025
-
+Mar 2, 2025
 - logging
 - deploy remotely?
 - testing?
 - cicd
+
+Mar 3, 2025
+- Tweak ollama prompt (stronger filter)
+- Have ollama modify resume based on job description
