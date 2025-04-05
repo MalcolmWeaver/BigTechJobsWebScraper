@@ -1,14 +1,17 @@
 from src.storage.JobStorageInterface import JobStorageInterface
 import requests
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 class JobSelector:
     def __init__(self, storage: JobStorageInterface):
         self.storage = storage
 
     def select_suitable_jobs(self, user_profile):
-        jobs = self.storage.get_jobs(filters={"description": True})
+        jobs = self.storage.get_jobs(filters={"match_reason": None, "description": True})
         suitable_jobs = []
-        for job in jobs[:2]:
+        for job in jobs:
             print(f"DEBUG: {job["posting_url"]}")
             llm_is_suitable = self.llm_is_suitable(job, user_profile)
             if llm_is_suitable:
@@ -18,7 +21,7 @@ class JobSelector:
 
             else:
                 job["is_match"] = False
-        self.storage.update_job(job["id"], job)
+
         return suitable_jobs
 
     def llm_is_suitable(self, job, user_profile):
@@ -31,25 +34,33 @@ class JobSelector:
 
             # Create a prompt that frames the evaluation task
             prompt = f"""
-            You are a strict, experienced recruiter tasked with quickly evaluating job applicants.
-            You have many applications to review and need to be selective, especially regarding
-            required experience, skills, and qualifications.
+            Given the following, address the following questions:
+            - Does the candidate address the qualifications? If there are preferred qualifications, would the candidate be competitive?
+            - Do the candidates experience and education match the requirements? Ie. is it a coding role?
+            - Would the candidate be competitive for the role?
+            - Focus only on the measurable aspects of the job posting such as required years of experience, not on subjective aspects such as "strong problem-solving skills"
 
-            JOB DESCRIPTION:
+            JOB TITLE:
             {job["title"]}
+            JOB DESCRIPTION:
             {job["description"]}
-
-            Required Skills: {', '.join(job["required_skills"] if hasattr(job, 'required_skills') else [])}
-            Required Experience: {job["years_experience"] if hasattr(job, 'years_experience') else 'Not specified'} years
+            JOB QUALIFICATIONS:
+            {job["all_qualifications"]}
+            JOB RESPONSIBILITIES:
+            {job["responsibilities"]}
 
             APPLICANT PROFILE:
             Education: {user_profile.degree if hasattr(user_profile, 'degree') else 'Not specified'}
             Years of Experience: {user_profile.years_of_experience if hasattr(user_profile, 'years_of_experience') else 'Not specified'} years
-
             Resume: {user_profile.resume_text if hasattr(user_profile, 'resume_text') else 'Not specified'}
 
-            Based solely on the above information, is this applicant suitable for this job?
-            Answer only 'YES:' or 'NO:' and then provide a brief explanation for your decision.
+            Answer with 'YES:' only if gayle would recommend the candidate for the role.
+            Answer with 'NO:' if the candidate is missing important qualifications or experience that would typically disqualify them.
+
+            After your YES/NO, provide 2-3 specific reasons based (quoting) on specific job posting/qualifications mismatches for your decision.
+            If NO, include 1-2 specific suggestions for how the candidate could modify their resume or gain experience to become competitive for similar roles in the future.
+
+            ANSWER MUST BEGIN WITH "YES:" OR "NO:"
             """
 
 
@@ -63,18 +74,34 @@ class JobSelector:
                                         'stream': False  # Set to False to get a single response
                                     })
 
-            print(f"DEBUG: RESPONSE: {response.json()['response']}")
+            print(f"DEBUG: RESPONSE: {response.status_code} {response.json()['response']}")
             # Parse the response
             if response.status_code == 200:
                 response_data = response.json()
                 response_text = response_data['response'].strip().upper()
-                is_suitable = "YES" in response_text[:10]  # Check beginning of response for YES
-
-                print(f"DEBUG:Ollama evaluation for job {job['id']}: {'Suitable' if is_suitable else 'Not suitable'}")
-                return is_suitable
             else:
-                print(f"DEBUG: Ollama API error: {response.status_code} - {response.text}")
+                logger.error({"event": "job_selector.llm_is_suitable.response_errored", "job_id": job["id"], "response": response.text, "status_code": response.status_code})
                 return False
+
+            is_suitable = "YES" in response_text[:10]  # Check beginning of response for YES
+            not_is_suitable = "NO" in response_text[:10]
+            rest_of_response = ""
+            if is_suitable and not not_is_suitable:
+                rest_of_response = response_text.split("YES:")[1]
+            elif not_is_suitable and not is_suitable:
+                rest_of_response = response_text.split("NO:")[1]
+            else:
+                logger.error({"event": "job_selector.llm_is_suitable.failed_to_decide", "job_id": job["id"], "response": response_text})
+                return False
+            job_update = {
+                "is_match": is_suitable,
+                "match_reason": rest_of_response
+            }
+            self.storage.update_job(job["id"], job_update)
+
+
+            return is_suitable
+
 
         except Exception as e:
             print(f"Error using Ollama for job suitability evaluation: {str(e)}")
@@ -94,5 +121,4 @@ if __name__ == "__main__":
 
     job_selector = JobSelector(JobStorage())
     profile = Malcolm2025Profile().create_profile()
-    print(f"DEBUG: {vars(profile)}")
     job_selector.select_suitable_jobs(profile)

@@ -13,5 +13,12 @@ class SiteFetcher(JobStorageInterface):
     def refetch_jobs(self, city):
         raise NotImplementedError("Subclass must implement refetch_jobs")
 
+    def update_partial_jobs(self, city):
+        """
+        Optional method to update partial job information.
+        Subclasses can override this method if needed.
+        """
+        return
+
 
 

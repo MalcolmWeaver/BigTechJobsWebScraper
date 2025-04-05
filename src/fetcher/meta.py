@@ -23,18 +23,18 @@ class MetaFetcher(SiteFetcher):
 
         """
         existing_job_ids = set(self.job_storage.get_job_ids())
-        logger.info({"event": "existing_job_id_read", "count": len(existing_job_ids)})
+        logger.info({"event": "meta_fetcher.existing_job_id_read", "count": len(existing_job_ids)})
         jobs_from_search_page = self.get_job_search_page(city)
-        logger.info({"event": "fetched_jobs_from_search_page", "count": len(jobs_from_search_page)})
+        logger.info({"event": "meta_fetcher.fetched_jobs_from_search_page", "count": len(jobs_from_search_page)})
         new_jobs = [job for job in jobs_from_search_page if job.id not in existing_job_ids]
-        logger.info({"event": "new_jobs_found", "count": len(new_jobs)})
+        logger.info({"event": "meta_fetcher.new_jobs_found", "count": len(new_jobs)})
 
         for job in new_jobs:
             job_with_details = self.get_job_with_details(job)
             if job_with_details:
                 self.job_storage.update_or_create_jobs(job_with_details.id, job_with_details)
             else:
-                logger.error({"event": "job_details_fetch_failed", "job_id": job.id})
+                logger.error({"event": "meta_fetcher.job_details_fetch_failed", "job_id": job.id})
         return new_jobs
 
     def refetch_jobs(self, city: str):
@@ -42,7 +42,7 @@ class MetaFetcher(SiteFetcher):
         Refetches jobs from the search page and updates the database with new jobs
         """
         jobs_from_search_page = self.get_job_search_page(city)
-        logger.info({"event": "fetched_jobs_from_search_page", "count": len(jobs_from_search_page)})
+        logger.info({"event": "meta_fetcher.fetched_jobs_from_search_page", "count": len(jobs_from_search_page)})
 
         self.job_storage.update_or_create_jobs(jobs_from_search_page)
 
@@ -54,9 +54,23 @@ class MetaFetcher(SiteFetcher):
                 jobs_with_details.append(job_with_details)
                 self.job_storage.update_or_create_jobs(jobs_with_details)
             else:
-                logger.error({"event": "job_details_fetch_failed", "job_id": job.id})
+                logger.error({"event": "meta_fetcher.job_details_fetch_failed", "job_id": job.id})
                 jobs_with_details.append(job)
 
+        return True
+
+    def update_partial_jobs(self, filters: dict):
+        """
+        Updates all jobs with partial data
+        """
+        jobs = self.job_storage.get_jobs(filters=filters)
+
+        for job in jobs:
+            job_with_details = self.get_job_with_details(job)
+            if job_with_details:
+                self.job_storage.update_or_create_jobs([job_with_details])
+            else:
+                logger.error({"event": "meta_fetcher.job_details_fetch_failed", "job_id": job.id})
         return True
 
     def get_job_search_page(self, city: str, page: int = 1, attempt: int = 0) -> List[JobPosting]:
@@ -68,11 +82,11 @@ class MetaFetcher(SiteFetcher):
 
         if response.ok:
             parsed_job_listings = self._parse_get_job_listings(response, city)
-            logger.info({"event": "job_listings_parsed", "count": len(parsed_job_listings)})
+            logger.info({"event": "meta_fetcher.job_listings_parsed", "count": len(parsed_job_listings)})
             return parsed_job_listings
 
         else:
-            logger.error({"event": "job_listings_fetch_failed", "status_code": response.status_code})
+            logger.error({"event": "meta_fetcher.job_listings_fetch_failed", "status_code": response.status_code})
             return []
 
     def get_job_with_details(self, job: JobPosting) -> JobPosting | None:
@@ -83,7 +97,7 @@ class MetaFetcher(SiteFetcher):
         response = self.http_client.request("GET", url, headers=headers)
         if response.ok:
             parsed_job_with_details = self._parse_get_job_with_details(job, response)
-            logger.info({"event": "job_details_fetched", "job_id": parsed_job_with_details.id})
+            logger.info({"event": "meta_fetcher.job_details_fetched", "job_id": parsed_job_with_details.id})
             return parsed_job_with_details
         else:
             print(f"Failed to fetch job details: {response.status_code}")
@@ -120,20 +134,20 @@ class MetaFetcher(SiteFetcher):
         seattle_cities = ["Seattle, WA", "Bellevue, WA", "Redmond, WA"]
         austin_cities = ["Austin, TX"]
         bay_area_cities = ["Fremont, CA", "Menlo Park, CA", "Mountain View, CA", "Newark, CA", "Sunnyvale, CA", "Santa Clara, CA", "San Francisco, CA", "San Mateo, CA", "Foster City, CA"]
-        bay_area_cities_set = set(bay_area_cities)
+        bay_area_cities_set = set([l.lower() for l in bay_area_cities])
         bay_area_cities_set.add("bay area")
 
-        if city.lower() in seattle_cities:
+        if city.lower() in [l.lower() for l in seattle_cities]:
             search_input = {"offices": seattle_cities}
             city = "Seattle, WA"
-        elif city.lower() in austin_cities:
+        elif city.lower() in [l.lower() for l in austin_cities]:
             search_input = {"offices": austin_cities}
             city = "Austin, TX"
         elif city.lower() in bay_area_cities_set:
             search_input = {"offices": bay_area_cities}
             city = "Bay Area"
         else:
-            logger.error({"event": "invalid_city", "city": city})
+            logger.error({"event": "meta_fetcher.invalid_city", "city": city})
             raise ValueError(f"Invalid city: {city}. Should be one of: {seattle_cities}, {austin_cities}, {bay_area_cities}")
 
         url = "https://www.metacareers.com/graphql"
@@ -257,5 +271,5 @@ if __name__ == "__main__":
     # job = JobPosting(company="Meta", id="936067258115050", title="test")
     # print(scraper.get_job_with_details(job))
 
-    val = scraper.refetch_jobs("Bay Area")
+    val = scraper.update_partial_jobs({"description": False, "location": "Bay Area"})
     print(val)

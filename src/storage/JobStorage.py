@@ -1,4 +1,4 @@
-import logging
+import structlog
 from src.models.job import JobPosting
 from src.storage.JobStorageInterface import JobStorageInterface
 import sqlite3
@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 class JobStorage(JobStorageInterface):
     def __init__(self, db_path: str = "data/JobsPostings.db"):
@@ -15,7 +15,7 @@ class JobStorage(JobStorageInterface):
 
     def initialize_database(self):
         """Create the database and tables if they don't exist"""
-        logger.info({"event": "initialize_database", "db_path": self.db_path})
+        logger.info({"event": "job_storage.initialize_database", "db_path": self.db_path})
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         with sqlite3.connect(self.db_path) as conn:
@@ -64,7 +64,7 @@ class JobStorage(JobStorageInterface):
                     job_dict.get("location")
                 ))
             conn.commit()
-            logger.info({"event": "store_jobs", "num_jobs": len(jobs)})
+            logger.info({"event": "job_storage.store_jobs", "num_jobs": len(jobs)})
 
     def get_jobs(self, filters=None):
         """Retrieve jobs from the database with optional filters"""
@@ -77,14 +77,25 @@ class JobStorage(JobStorageInterface):
 
             if filters:
                 where_clauses = []
+                if "id" in filters:
+                    where_clauses.append("id = ?")
+                    params.append(filters["id"])
                 if "company" in filters:
                     where_clauses.append("company = ?")
                     params.append(filters["company"])
+                if "location" in filters:
+                    where_clauses.append("location = ?")
+                    params.append(filters["location"])
                 if "title" in filters:
                     where_clauses.append("title LIKE ?")
                     params.append(f"%{filters['title']}%")
-                if "description" in filters and filters["description"] == True:
-                    where_clauses.append('description IS NOT NULL and description != ""')
+                if "match_reason" in filters and filters["match_reason"] == None:
+                    where_clauses.append('match_reason = ""')
+                if "description" in filters:
+                    if filters["description"] == True:
+                        where_clauses.append('description != ""')
+                    elif filters["description"] == False:
+                        where_clauses.append('description = ""')
 
                 # Add more filters as needed
 
@@ -93,7 +104,7 @@ class JobStorage(JobStorageInterface):
 
             cursor.execute(query, params)
             rows = cursor.fetchall()
-            logger.info({"event": "get_jobs", "num_jobs": len(rows)})
+            logger.info({"event": "job_storage.get_jobs", "num_jobs": len(rows)})
 
             # Convert database rows to domain objects
             return [self._to_domain_model(dict(row)) for row in rows]
@@ -141,7 +152,10 @@ class JobStorage(JobStorageInterface):
             """, params)
 
             conn.commit()
-            logger.info({"event": "update_job", "job_id": job_id, "updates": updates})
+
+            logger.info({"event": "job_storage.job_updated", "job_id": job_id, "updates": updates})
+
+            self.get_jobs(filters={"id": job_id})
             return cursor.rowcount > 0
 
     def update_or_create_jobs(self, jobs: list[JobPosting]):
@@ -154,7 +168,6 @@ class JobStorage(JobStorageInterface):
         self.insert_jobs(new_jobs)
         for job in old_jobs:
             self.update_job(job.id, job)
-        logger.info({"event": "update_or_create_jobs", "new_jobs": len(new_jobs), "old_jobs": len(old_jobs)})
 
     def _to_storage_model(self, job_posting):
         """Convert a domain JobPosting object to a dictionary for storage"""
@@ -164,4 +177,12 @@ class JobStorage(JobStorageInterface):
     def _to_domain_model(self, row_dict):
         """Convert a database row dictionary to a domain object dict
         The caller will instantiate the actual domain object"""
-        return row_dict
+        # Convert any JSON strings back to Python objects
+        for key in ["responsibilities", "requirements", "all_qualifications", "teams", "locations"]:
+            if key in row_dict and isinstance(row_dict[key], str):
+                try:
+                    row_dict[key] = json.loads(row_dict[key])
+                except json.JSONDecodeError:
+                    pass
+
+        return JobPosting(**row_dict)
